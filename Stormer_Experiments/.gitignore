@@ -1,0 +1,23 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.pytest_cache
+
+# Virtual environments
+.venv
+data
+results
+
+all_metrics*.pt
+results*
+plots
+plots_aurora_small
+docs
+data
+ablation_W*
+stormer
+stormer_*.ckpt
