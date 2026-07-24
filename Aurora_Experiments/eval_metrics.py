@@ -506,15 +506,23 @@ def difference_kinetic_energy(pred, y, vars, lat, log_postfix):
     return result
 
 
-def hypsometric_residual(pred, y, vars, lat, log_postfix):
+def hypsometric_residual(pred, y, vars, lat, log_postfix, virtual=True):
     z_idx = _levels_for(vars, "geopotential_")
     t_idx = _levels_for(vars, "temperature_")
+    q_idx = _levels_for(vars, "specific_humidity_")
     levels = sorted(set(z_idx) & set(t_idx))             # ascending pressure (hPa)
     pairs = list(zip(levels[:-1], levels[1:]))           # (p_up, p_dn), p_up < p_dn
 
     lat = np.asarray(lat)
     w = np.cos(np.deg2rad(lat))
     w = w / w.sum()
+
+    def _tv(src, L):
+        """Layer temperature at level L: virtual T if requested and q is present, else dry T."""
+        t = src[:, t_idx[L]]
+        if virtual and L in q_idx:
+            return t * (1.0 + 0.6078 * src[:, q_idx[L]])
+        return t
 
     result = {f"hyps_pairs_{log_postfix}": [f"{dn}-{up}" for up, dn in pairs]}
     with torch.no_grad():
@@ -526,7 +534,7 @@ def hypsometric_residual(pred, y, vars, lat, log_postfix):
         for src, tag in ((pred, "pred"), (y, "truth")):
             for up, dn in pairs:
                 thick = src[:, z_idx[up]] - src[:, z_idx[dn]]                 # m^2/s^2, > 0
-                t_bar = 0.5 * (src[:, t_idx[up]] + src[:, t_idx[dn]])
+                t_bar = 0.5 * (_tv(src, up) + _tv(src, dn))
                 hyps = R_D * t_bar * np.log(dn / up)
                 pair_key = f"{dn}-{up}"
                 result[f"hyps_rms_{tag}_{pair_key}_{log_postfix}"] = _wrms(thick - hyps).cpu()

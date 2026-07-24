@@ -278,6 +278,23 @@ def spearman_matrix(X):
 MetricSpec = namedtuple("MetricSpec", "label group name_fmt kind transform derived_fn",
                         defaults=(None, None))
 
+AGG_CLASS = {
+    "RMSE": "standard",                    # + ACC/bias when added to the registry
+    "wind_balance": "balance", "div_vort": "balance", "hypsometric": "balance",
+    "dry_air_mass": "conservation", "neg_humidity": "conservation",
+    "spec_div": "spectral", "spec_res": "spectral",
+    "RQE": "extremes",
+    "dke_pert": "perturbation",
+}
+CONSISTENCY_CLASSES = ("balance", "conservation")
+AGG_CLASS_ORDER = ("standard", "balance", "conservation", "spectral", "extremes",
+                   "perturbation")
+
+
+def agg_class(spec):
+    """Aggregate class of a MetricSpec; None => excluded from all aggregates."""
+    return AGG_CLASS.get(spec.group)
+
 
 def _mid_trop_pair(pairs):
     """The hypsometric layer whose midpoint is closest to 550 hPa."""
@@ -285,6 +302,17 @@ def _mid_trop_pair(pairs):
         a, b = p.split("-")
         return 0.5 * (int(a) + int(b))
     return min(pairs, key=lambda p: abs(mid(p) - 550.0))
+
+
+def _hyps_rel_series(pair, side="pred"):
+    """[D] thickness-normalised hypsometric residual: hyps_rms/hyps_thick.
+    A small difference of large terms, so the absolute residual scales with layer
+    thickness; dividing by the stored thickness makes it a comparable fraction."""
+    def fn(run, lead):
+        rms = run.scalar_at("hypsometric", f"hyps_rms_{side}_{pair}_{{lt}}", lead)
+        thick = run.scalar_at("hypsometric", f"hyps_thick_{side}_{pair}_{{lt}}", lead)
+        return rms / thick
+    return fn
 
 
 def _eff_res_series(var):
@@ -326,8 +354,8 @@ def metric_registry(run):
         specs.append(MetricSpec(f"div/vort {L}hPa", "div_vort",
                                 f"divvort_ratio_pred_{L}_{{lt}}", "error_pos"))
     pair = _mid_trop_pair(run.hyps_pairs())
-    specs.append(MetricSpec(f"Hyps {pair}", "hypsometric",
-                            f"hyps_rms_pred_{pair}_{{lt}}", "error_pos"))
+    specs.append(MetricSpec(f"HypsRel {pair}", "hypsometric", None, "error_pos",
+                            None, _hyps_rel_series(pair)))
     specs.append(MetricSpec("|DryAir Md err|", "dry_air_mass",
                             "dryair_Md_err_{lt}", "error_pos", np.abs))
     specs.append(MetricSpec("neg-q fraction", "neg_humidity",

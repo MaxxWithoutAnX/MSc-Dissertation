@@ -18,3 +18,8 @@ plots_aurora_small
 docs
 data
 ablation_W*_sampled
+ablation_analysis_legacy_binary_agg
+ablations_*
+.pytest_cache
+tests
+*.pdf

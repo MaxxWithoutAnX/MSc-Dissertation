@@ -18,7 +18,9 @@ from plot_common import (
     MetricsRun, MetricSpec, metric_registry, per_init_series,
     paired_diff_test, block_bootstrap, svr_test, spearman_matrix,
     ensure_dir, save_fig,
+    agg_class, CONSISTENCY_CLASSES, AGG_CLASS_ORDER,
 )
+from distortion import NoiseFloor, distortion, floor_family_of
 
 EPS = 1e-12
 NC_PATH = os.path.join("data", "era5_sampled_2020_4pm_aurora_0p25.nc")
@@ -26,19 +28,45 @@ FULL_FP32_KEY = "FP32"
 DKE_PERT_LEVEL = 500
 DKE_PERT_WL_MAX_KM = 1000.0
 
+AXIS_REDUCER = "representative"
+AXIS_REPRESENTATIVE = {"balance": "wind_balance", "conservation": "dry_air_mass",
+                       "standard": "RMSE", "spectral": "spec_div"}
+
+
+def _reduce_axis(family_values, axis, reducer=None):
+    """Reduce {family: value} for one axis to a scalar per `reducer`."""
+    reducer = reducer or AXIS_REDUCER
+    vals = {k: v for k, v in family_values.items() if np.isfinite(v)}
+    if not vals:
+        return float("nan")
+    if reducer == "representative":
+        rep = AXIS_REPRESENTATIVE.get(axis)
+        if rep in vals:
+            return float(vals[rep])
+        return float(np.mean(list(vals.values())))   # fallback: mean
+    if reducer == "mean":
+        return float(np.mean(list(vals.values())))
+    if reducer == "first_pc":
+        x = np.array(list(vals.values()), dtype=np.float64)
+        return float(np.abs(x).max())   # 1-D degenerate PC == max magnitude
+    raise ValueError(f"unknown reducer {reducer!r}")
+
 HEATMAP_EXCLUDE = ("div/vort", "Hyps")
 
 CSV_FIELDS = ["group", "metric", "lead", "fp32_mean", "group_mean", "mean_delta",
               "ci_lo", "ci_hi", "rel_pct", "svr", "svr_ci_lo", "svr_ci_hi",
+              "distortion",
               "share", "norm", "rank", "significant", "lag1_autocorr", "n", "n_eff"]
 
 
 # --- group ordering / colouring (names from Aurora/groups.py) ----
 _CLASS_RANK = {"encoder_io": 0, "enc": 1, "downsample": 2, "dec": 3,
-               "upsample": 4, "decoder_io": 5, "decoder_heads": 6, "other": 7}
+               "upsample": 4, "decoder_io": 5, "decoder_heads": 6,
+               "film": 7, "cond_embed": 8, "other": 9}
 _CLASS_CMAP = {"encoder_io": "Oranges", "enc": "Blues", "downsample": "Purples",
                "dec": "Greens", "upsample": "Purples", "decoder_io": "Reds",
-               "decoder_heads": "Reds", "other": "Greys"}
+               "decoder_heads": "Reds", "film": "RdPu", "cond_embed": "YlOrBr",
+               "other": "Greys"}
 
 
 def _group_class(g):
@@ -190,13 +218,15 @@ def full_damage_table(scheme, specs, leads):
 
 
 def sensitivity_records(fp32_run, oat_runs, specs, groups, leads, dates, block,
-                        full_table, norm_mode):
+                        full_table, norm_mode, noise_floor):
     """One row per (group, metric, lead); share/colmax normalisation per column."""
     svr_method = pick_svr_method(dates)
     recs = []
     for lead in leads:
         for spec in specs:
             base = spec_series(fp32_run, spec, lead)
+            sigma = noise_floor.sigma(floor_family_of(spec), lead) \
+                if floor_family_of(spec) else 0.0
             col = []
             for g in groups:
                 val = spec_series(oat_runs[g], spec, lead)
@@ -208,6 +238,7 @@ def sensitivity_records(fp32_run, oat_runs, specs, groups, leads, dates, block,
                     "mean_delta": r["mean_diff"], "ci_lo": r["ci_lo"], "ci_hi": r["ci_hi"],
                     "rel_pct": r["rel_diff_pct"],
                     "svr": sv["svr"], "svr_ci_lo": sv["svr_ci_lo"], "svr_ci_hi": sv["svr_ci_hi"],
+                    "distortion": distortion(r["mean_diff"], sv["svr_denom"], sigma),
                     "significant": bool(r["significant"]),
                     "lag1_autocorr": r["lag1_autocorr"], "n": r["n"], "n_eff": r["n_eff"],
                     "share": float("nan"), "norm": "",
@@ -254,29 +285,58 @@ def record_index(records):
     return {(r["metric"], r["lead"], r["group"]): r for r in records}
 
 
-# --- physics / RMSE aggregation --------------------------------------------------------
-def is_physics(label):
-    return not label.startswith("RMSE ")
+def class_families(specs):
+    """{agg_class: {registry family: [labels]}} over classed specs."""
+    out = defaultdict(lambda: defaultdict(list))
+    for s in specs:
+        c = agg_class(s)
+        if c is not None:
+            out[c][s.group].append(s.label)
+    return out
 
 
-def group_aggregates(records, spec_labels, groups, lead):
-    """{group: {phys_share, rmse_share, phys_svr, rmse_svr}} - signed mean share,
-    mean |SVR|, each averaged over the metric class (nan-safe)."""
+def consistency_labels(specs):
+    """Labels in the physical-consistency (balance+conservation) classes."""
+    return [s.label for s in specs if agg_class(s) in CONSISTENCY_CLASSES]
+
+
+def _nanmean(v):
+    v = np.asarray(v, dtype=np.float64)
+    return float(np.nanmean(v)) if v.size and not np.all(np.isnan(v)) else float("nan")
+
+
+def group_aggregates(records, specs, groups, lead):
+    """{group: {'<class>_share', '<class>_svr', phys_share/svr, rmse_share/svr,
+    legacy_phys_share/svr}} - shares are signed means, svr is mean |SVR| (nan-safe)."""
     idx = record_index(records)
-    phys = [l for l in spec_labels if is_physics(l)]
-    rmse = [l for l in spec_labels if not is_physics(l)]
+    cf = class_families(specs)
+    legacy = [s.label for s in specs if not s.label.startswith("RMSE ")]
     out = {}
     for g in groups:
-        def _vals(labels, key, absval=False):
+        def _flat(labels, key, absval=False):
             v = np.array([idx[(l, lead, g)][key] for l in labels if (l, lead, g) in idx],
                          dtype=np.float64)
             if absval:
                 v = np.abs(v)
-            return float(np.nanmean(v)) if v.size and not np.all(np.isnan(v)) else float("nan")
-        out[g] = {"phys_share": _vals(phys, "share"),
-                  "rmse_share": _vals(rmse, "share"),
-                  "phys_svr": _vals(phys, "svr", absval=True),
-                  "rmse_svr": _vals(rmse, "svr", absval=True)}
+            return _nanmean(v)
+        def _famfirst(fams, key, absval=False):
+            return _nanmean([_flat(ls, key, absval) for ls in fams.values()])
+        d = {}
+        for c, fams in cf.items():
+            d[f"{c}_share"] = _famfirst(fams, "share")
+            d[f"{c}_svr"] = _famfirst(fams, "svr", absval=True)
+            fam_dist = {fam: _flat(labels, "distortion")
+                        for fam, labels in fams.items()}
+            d[f"{c}_distortion"] = _reduce_axis(fam_dist, c)
+        d["phys_share"] = _nanmean([d.get(f"{c}_share", np.nan) for c in CONSISTENCY_CLASSES])
+        d["phys_svr"] = _nanmean([d.get(f"{c}_svr", np.nan) for c in CONSISTENCY_CLASSES])
+        d["phys_distortion"] = _nanmean([d.get(f"{c}_distortion", np.nan)
+                                         for c in CONSISTENCY_CLASSES])
+        d["rmse_share"] = d.get("standard_share", float("nan"))
+        d["rmse_svr"] = d.get("standard_svr", float("nan"))
+        d["legacy_phys_share"] = _flat(legacy, "share")
+        d["legacy_phys_svr"] = _flat(legacy, "svr", absval=True)
+        out[g] = d
     return out
 
 
@@ -382,63 +442,78 @@ def plot_family_panels(fp32_run, oat_runs, family, specs, groups, leads, block,
 
 
 # --- composite / summary figures ----------------------------------------------------------
-def plot_layer_summary(records, spec_labels, groups, lead, colors, out_dir):
-    """Headline ranking: bar = mean share of full-quant damage over the physics metrics,
-    dots = the individual physics metrics, diamond = mean over the RMSE metrics."""
+def plot_layer_summary(records, specs, groups, lead, colors, out_dir):
     idx = record_index(records)
-    phys = [l for l in spec_labels if is_physics(l)]
-    rmse = [l for l in spec_labels if not is_physics(l)]
-    norms = {idx[(l, lead, g)]["norm"] for l in spec_labels for g in groups
-             if (l, lead, g) in idx}
+    agg = group_aggregates(records, specs, groups, lead)
+    cons = consistency_labels(specs)
+    norms = {idx[(s.label, lead, g)]["norm"] for s in specs for g in groups
+             if (s.label, lead, g) in idx}
     xlabel = ("mean share of full-quant damage" if norms == {"share"}
               else "mean normalised damage (mixed share/col-max!)")
 
     rows = []
     for g in groups:
-        pv = np.array([idx[(l, lead, g)]["share"] for l in phys if (l, lead, g) in idx])
-        rv = np.array([idx[(l, lead, g)]["share"] for l in rmse if (l, lead, g) in idx])
-        rows.append((g, float(np.nanmean(pv)), pv, float(np.nanmean(rv))))
-    rows.sort(key=lambda r: r[1])                       # largest at the top of the barh
+        pv = np.array([idx[(l, lead, g)]["share"] for l in cons if (l, lead, g) in idx])
+        rows.append((g, agg[g]["phys_share"], pv, agg[g]["rmse_share"],
+                     agg[g].get("spectral_share", float("nan"))))
+    rows.sort(key=lambda r: r[1] if np.isfinite(r[1]) else -np.inf)
 
     fig, ax = plt.subplots(figsize=(8, 0.42 * len(groups) + 2))
     y = np.arange(len(rows))
-    for k, (g, pmean, pv, rmean) in enumerate(rows):
+    for k, (g, pmean, pv, rmean, smean) in enumerate(rows):
         ax.barh(k, pmean, color=colors[g], alpha=0.85, zorder=2)
         ax.plot(pv, np.full(pv.shape, k), "o", ms=3, color="0.25", alpha=0.6, zorder=3)
         ax.plot(rmean, k, "D", ms=6, mfc="w", mec="crimson", mew=1.5, zorder=4)
+        if np.isfinite(smean):
+            ax.plot(smean, k, "^", ms=6, mfc="w", mec="tab:blue", mew=1.5, zorder=4)
         ax.text(pmean, k, f" {pmean:.2f}", va="center", fontsize=7,
                 ha="left" if pmean >= 0 else "right")
     ax.set_yticks(y)
     ax.set_yticklabels([r[0] for r in rows], fontsize=8)
     ax.axvline(0, color="k", lw=0.8)
     ax.set_xlabel(f"{xlabel} @ {lead} h")
-    ax.set_title(f"Per-layer damage @ {lead} h - bar: mean over physics metrics, "
-                 f"dots: individual physics metrics, ◇: mean over RMSE metrics", fontsize=9)
+    ax.set_title(f"Per-layer damage @ {lead} h - bar: mean over physical-consistency "
+                 f"metrics, dots: individual consistency metrics, ◇: standard (RMSE), "
+                 f"△: spectral", fontsize=9)
     ax.grid(True, axis="x", alpha=0.3)
     save_fig(fig, out_dir, f"layer_summary_{lead}h.png")
 
 
-def plot_physics_vs_rmse(records, spec_labels, groups, lead, colors, out_dir):
-    """One point per layer group: mean |SVR| over RMSE metrics (x) vs over physics
-    metrics (y). Points far above y=x are 'RMSE-blind' layers: they damage physical
-    consistency without moving forecast error."""
-    agg = group_aggregates(records, spec_labels, groups, lead)
+def plot_physics_vs_rmse(records, specs, groups, lead, colors, out_dir):
+    agg = group_aggregates(records, specs, groups, lead)
     floor = 1e-2
-    fig, ax = plt.subplots(figsize=(7, 6.5))
-    for g in groups:
-        x = max(agg[g]["rmse_svr"], floor)
-        y = max(agg[g]["phys_svr"], floor)
-        ax.plot(x, y, "o", ms=8, color=colors[g])
-        ax.annotate(g, (x, y), textcoords="offset points", xytext=(5, 3), fontsize=7)
-    lims = np.array(ax.get_xlim() + ax.get_ylim())
-    lo, hi = max(floor / 2, lims.min() / 2), lims.max() * 2
-    ax.plot([lo, hi], [lo, hi], "k--", lw=1)
-    ax.set_xscale("log"); ax.set_yscale("log")
-    ax.set_xlim(lo, hi); ax.set_ylim(lo, hi)
-    ax.set_xlabel("mean |SVR| over RMSE metrics")
-    ax.set_ylabel("mean |SVR| over physics metrics")
-    ax.set_title(f"Physics vs RMSE damage per layer @ {lead} h", fontsize=10)
-    ax.grid(True, which="both", alpha=0.3)
+
+    def _floored(v):
+        return floor if not np.isfinite(v) else max(v, floor)
+
+    panels = [("phys_svr", "physical consistency (balance+conservation)"),
+              ("spectral_svr", "spectral")]
+    pts = [_floored(agg[g]["rmse_svr"]) for g in groups] + \
+          [_floored(agg[g].get(key, float("nan"))) for key, _ in panels for g in groups]
+    lo, hi = max(floor / 2, min(pts) / 2), max(pts) * 2
+
+    fig, axes = plt.subplots(1, 2, figsize=(12.5, 6.2))
+    for ax, (key, name) in zip(axes, panels):
+        if not any(np.isfinite(agg[g].get(key, float("nan"))) for g in groups):
+            ax.text(0.5, 0.5, f"no {name} metrics\nin this ablation dataset",
+                    ha="center", va="center", transform=ax.transAxes, fontsize=11,
+                    color="0.4")
+        else:
+            for g in groups:
+                x = _floored(agg[g]["rmse_svr"])
+                y = _floored(agg[g].get(key, float("nan")))
+                ax.plot(x, y, "o", ms=8, color=colors[g])
+                ax.annotate(g, (x, y), textcoords="offset points", xytext=(5, 3),
+                            fontsize=7)
+        ax.plot([lo, hi], [lo, hi], "k--", lw=1)
+        ax.set_xscale("log"); ax.set_yscale("log")
+        ax.set_xlim(lo, hi); ax.set_ylim(lo, hi)
+        ax.set_xlabel("mean |SVR| over standard (RMSE) metrics")
+        ax.set_ylabel(f"mean |SVR| over {name} metrics")
+        ax.set_title(name, fontsize=10)
+        ax.grid(True, which="both", alpha=0.3)
+    fig.suptitle(f"Damage per layer vs standard metrics @ {lead} h", fontsize=11)
+    fig.tight_layout()
     save_fig(fig, out_dir, f"physics_vs_rmse_{lead}h.png")
 
 
@@ -513,9 +588,6 @@ def plot_dke_pert_band(oat_runs, groups, full_run, lead, block, colors, out_dir)
 
 # --- additivity check ------------------------------------------------------------------------
 def plot_additivity(records, spec_labels, groups, lead, full_table, out_dir):
-    """Sum of per-group damage vs the full-quant run's damage, per metric. Ratio > 1 =
-    sub-additive interactions; < 1 = super-additive interactions and/or damage from the
-    never-grouped layers (FiLM / embeddings, quantised in the full run but not OAT'd)."""
     idx = record_index(records)
     labels, ratios = [], []
     for l in spec_labels:
@@ -536,17 +608,89 @@ def plot_additivity(records, spec_labels, groups, lead, full_table, out_dir):
     ax.set_yticks(y)
     ax.set_yticklabels(labels, fontsize=7)
     ax.set_xlabel("Σ per-group Δ / full-quant Δ")
-    ax.set_title(f"OAT additivity @ {lead} h (shortfall = interactions + never-grouped "
-                 f"FiLM/embedding layers)", fontsize=9)
+    ax.set_title(f"OAT additivity @ {lead} h (shortfall = interactions + any "
+                 f"never-grouped layers)", fontsize=9)
     ax.legend(fontsize=8)
     ax.grid(True, axis="x", alpha=0.3)
     save_fig(fig, out_dir, f"additivity_{lead}h.png")
 
 
+def additivity_verdict(records, spec_labels, groups, lead, full_table, tol=0.2):
+    """Per metric: Σ_g OAT mean_delta vs the full-quant mean_delta; additive_ok when
+    the ratio is within `tol` of 1. This declares the additive surrogate's validity
+    domain the allocator relies on."""
+    idx = record_index(records)
+    out = []
+    for l in spec_labels:
+        f = full_table.get((l, lead))
+        if f is None or abs(f) < EPS:
+            continue
+        s = sum(idx[(l, lead, g)]["mean_delta"] for g in groups if (l, lead, g) in idx)
+        ratio = s / f
+        out.append({"metric": l, "lead": lead, "sum_oat": s, "full": f,
+                    "ratio": ratio, "additive_ok": bool(1 - tol <= ratio <= 1 + tol)})
+    return out
+
+
+def write_additivity_csv(rows, out_dir, lead):
+    path = os.path.join(out_dir, f"additivity_{lead}h.csv")
+    with open(path, "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["metric", "lead", "sum_oat", "full",
+                                          "ratio", "additive_ok"])
+        w.writeheader()
+        for r in rows:
+            w.writerow(r)
+    print(f"wrote {path}", flush=True)
+
+
 # --- per-dir driver -----------------------------------------------------------------------------
 def _scheme_of(cfg_dir):
-    m = re.match(r"ablations?_([A-Za-z0-9]+)_", os.path.basename(os.path.normpath(cfg_dir)))
-    return m.group(1) if m else None
+    m = re.match(r"ablations?_(.+)", os.path.basename(os.path.normpath(cfg_dir)))
+    if not m:
+        return None
+    cand = m.group(1)
+    while cand and not os.path.exists(f"all_metrics_{cand}.pt"):
+        if "_" not in cand:
+            break
+        cand = cand.rsplit("_", 1)[0]
+    return cand
+
+
+def collinearity_matrix(records, labels, groups, lead):
+    """Spearman matrix over the per-group mean_delta vectors of `labels` at `lead`.
+    High |rho| between balance families = redundant instruments (double-counting)."""
+    idx = record_index(records)
+    cols = []
+    present = []
+    for l in labels:
+        vec = [idx[(l, lead, g)]["mean_delta"] for g in groups if (l, lead, g) in idx]
+        if len(vec) == len(groups):
+            cols.append(vec)
+            present.append(l)
+    X = np.column_stack(cols)
+    return spearman_matrix(X), present
+
+
+def plot_collinearity(records, all_labels, groups, lead, out_dir):
+    """Balance-family collinearity heatmap + CSV (the evidence behind AXIS_REDUCER)."""
+    labels = [l for l in all_labels
+              if any(t in l for t in ("Vag", "div/vort", "Hyps"))]
+    if len(labels) < 2:
+        return
+    M, present = collinearity_matrix(records, labels, groups, lead)
+    fig, ax = plt.subplots(figsize=(0.5 * len(present) + 2, 0.5 * len(present) + 2))
+    ax.imshow(M, vmin=-1, vmax=1, cmap="RdBu_r")
+    for i in range(len(present)):
+        for j in range(len(present)):
+            ax.text(j, i, f"{M[i, j]:.2f}", ha="center", va="center", fontsize=7)
+    ax.set_xticks(range(len(present))); ax.set_xticklabels(present, rotation=90, fontsize=6)
+    ax.set_yticks(range(len(present))); ax.set_yticklabels(present, fontsize=6)
+    ax.set_title(f"Balance-metric rank collinearity @ {lead} h", fontsize=9)
+    save_fig(fig, out_dir, f"collinearity_{lead}h.png")
+    with open(os.path.join(out_dir, f"collinearity_{lead}h.csv"), "w", newline="") as f:
+        w = csv.writer(f); w.writerow([""] + present)
+        for i, l in enumerate(present):
+            w.writerow([l] + [f"{M[i, j]:.4f}" for j in range(len(present))])
 
 
 def analyse_dir(cfg_dir, leads_arg=None, norm_mode="auto"):
@@ -570,6 +714,10 @@ def analyse_dir(cfg_dir, leads_arg=None, norm_mode="auto"):
     print(f"groups={len(groups)}  inits={len(fp32_run.dates)}  leads={leads}  "
           f"block={block}  svr_method={pick_svr_method(dates)}", flush=True)
 
+    noise_floor = NoiseFloor.from_detailed()
+    print(f"noise floor: {'NULL (sigma=0, gate off)' if noise_floor.is_null else 'loaded'}",
+          flush=True)
+
     first = next(iter(oat_runs.values()))
     specs = list(metric_registry(fp32_run))
     dp = dke_pert_spec(first)
@@ -588,7 +736,7 @@ def analyse_dir(cfg_dir, leads_arg=None, norm_mode="auto"):
                                                  map_location="cpu", weights_only=False))
 
     recs = sensitivity_records(fp32_run, oat_runs, specs, groups, leads, dates, block,
-                               full_table, norm_mode)
+                               full_table, norm_mode, noise_floor)
     add_ranks(recs)
     write_csv(recs, os.path.join(out, "sensitivity.csv"))
     rec_idx = record_index(recs)
@@ -605,12 +753,15 @@ def analyse_dir(cfg_dir, leads_arg=None, norm_mode="auto"):
                            "SVR (Δ / deseasonalised FP32 IQR)")
         plot_rank_heatmap(recs, heatmap_labels, groups, lead,
                           os.path.join(out, f"rank_heatmap_{lead}h.png"))
-        plot_layer_summary(recs, labels, groups, lead, colors, out)
-        plot_physics_vs_rmse(recs, labels, groups, lead, colors, out)
+        plot_layer_summary(recs, specs, groups, lead, colors, out)
+        plot_physics_vs_rmse(recs, specs, groups, lead, colors, out)
+        plot_collinearity(recs, labels, groups, lead, out)
         if dp is not None:
             plot_dke_pert_band(oat_runs, groups, full_run, lead, block, colors, out)
         if full_table is not None:
             plot_additivity(recs, labels, groups, lead, full_table, out)
+            write_additivity_csv(additivity_verdict(recs, labels, groups, lead, full_table),
+                                 out, lead)
 
     fams = defaultdict(list)
     for s in specs:
@@ -622,7 +773,7 @@ def analyse_dir(cfg_dir, leads_arg=None, norm_mode="auto"):
         plot_dke_pert_spectra(oat_runs, groups, full_run, leads, colors, out)
 
     return {"scheme": scheme or name, "records": recs, "labels": labels,
-            "groups": groups, "leads": leads}
+            "specs": specs, "groups": groups, "leads": leads}
 
 
 # --- cross-scheme summary --------------------------------------------------------------------------
@@ -636,19 +787,23 @@ def cross_scheme(summaries, out):
     if not groups or not leads:
         print("cross-scheme: no common groups/leads - skipped", flush=True)
         return
-    aggs = {s["scheme"]: {lt: group_aggregates(s["records"], s["labels"], groups, lt)
+    aggs = {s["scheme"]: {lt: group_aggregates(s["records"], s["specs"], groups, lt)
                           for lt in leads} for s in summaries}
 
+    class_cols = [f"{c}_{k}" for c in AGG_CLASS_ORDER for k in ("share", "svr")]
     with open(os.path.join(out, "cross_scheme.csv"), "w", newline="") as f:
         w = csv.writer(f)
         w.writerow(["scheme", "group", "lead", "mean_physics_share", "mean_rmse_share",
-                    "mean_physics_abs_svr", "mean_rmse_abs_svr"])
+                    "mean_physics_abs_svr", "mean_rmse_abs_svr"] + class_cols +
+                   ["legacy_mean_physics_share", "legacy_mean_physics_abs_svr"])
         for sc in schemes:
             for lt in leads:
                 for g in groups:
                     a = aggs[sc][lt][g]
                     w.writerow([sc, g, lt, a["phys_share"], a["rmse_share"],
-                                a["phys_svr"], a["rmse_svr"]])
+                                a["phys_svr"], a["rmse_svr"]] +
+                               [a.get(c, float("nan")) for c in class_cols] +
+                               [a["legacy_phys_share"], a["legacy_phys_svr"]])
     print(f"wrote {os.path.join(out, 'cross_scheme.csv')}", flush=True)
 
     # grouped bars: mean physics share per group x scheme, one panel per lead
@@ -666,36 +821,45 @@ def cross_scheme(summaries, out):
         ax.set_xticks(x)
         ax.set_xticklabels(groups, rotation=90, fontsize=7)
         ax.axhline(0, color="k", lw=0.8)
-        ax.set_ylabel("mean physics share")
+        ax.set_ylabel("mean physical-consistency share")
         ax.set_title(f"+{lt} h", fontsize=9)
         ax.grid(True, axis="y", alpha=0.3)
     for ax in list(axes.flat)[len(leads):]:
         ax.axis("off")
     axes.flat[0].legend(fontsize=8)
-    fig.suptitle("Per-layer physics damage (share of each scheme's own full-quant damage)")
+    fig.suptitle("Per-layer physical-consistency damage "
+                 "(share of each scheme's own full-quant damage)")
     fig.tight_layout()
     save_fig(fig, out, "cross_scheme_bars.png")
 
-    # Spearman rank agreement between schemes' per-group damage vectors
-    fig, axes = plt.subplots(2, len(leads), figsize=(2.6 * len(leads) + 1.5, 6),
-                             squeeze=False)
-    for col, lt in enumerate(leads):
-        for row, key in enumerate(["phys_share", "rmse_share"]):
-            X = np.column_stack([[aggs[sc][lt][g][key] for g in groups] for sc in schemes])
-            C = spearman_matrix(X)
-            ax = axes[row][col]
-            ax.imshow(C, vmin=-1, vmax=1, cmap="RdBu_r")
-            for i in range(len(schemes)):
-                for j in range(len(schemes)):
-                    ax.text(j, i, f"{C[i, j]:.2f}", ha="center", va="center", fontsize=8)
-            ax.set_xticks(range(len(schemes)))
-            ax.set_xticklabels(schemes, fontsize=7, rotation=45)
-            ax.set_yticks(range(len(schemes)))
-            ax.set_yticklabels(schemes, fontsize=7)
-            ax.set_title(f"{'physics' if row == 0 else 'RMSE'} @ +{lt} h", fontsize=9)
-    fig.suptitle("Spearman agreement of per-layer damage rankings between schemes")
-    fig.tight_layout()
-    save_fig(fig, out, "rank_agreement.png")
+    def _rank_fig(row_keys, fname):
+        fig, axes = plt.subplots(2, len(leads), figsize=(2.6 * len(leads) + 1.5, 6),
+                                 squeeze=False)
+        for col, lt in enumerate(leads):
+            for row, (key, title) in enumerate(row_keys):
+                X = np.column_stack([[aggs[sc][lt][g][key] for g in groups]
+                                     for sc in schemes])
+                C = spearman_matrix(X)
+                ax = axes[row][col]
+                ax.imshow(C, vmin=-1, vmax=1, cmap="RdBu_r")
+                for i in range(len(schemes)):
+                    for j in range(len(schemes)):
+                        ax.text(j, i, f"{C[i, j]:.2f}", ha="center", va="center",
+                                fontsize=8)
+                ax.set_xticks(range(len(schemes)))
+                ax.set_xticklabels(schemes, fontsize=7, rotation=45)
+                ax.set_yticks(range(len(schemes)))
+                ax.set_yticklabels(schemes, fontsize=7)
+                ax.set_title(f"{title} @ +{lt} h", fontsize=9)
+        fig.suptitle("Spearman agreement of per-layer damage rankings between schemes")
+        fig.tight_layout()
+        save_fig(fig, out, fname)
+
+    _rank_fig([("phys_svr", "consistency |SVR|"), ("rmse_svr", "standard |SVR|")],
+              "rank_agreement.png")
+    _rank_fig([("legacy_phys_share", "physics share (legacy)"),
+               ("rmse_share", "RMSE share (legacy)")],
+              "rank_agreement_share_legacy.png")
 
 
 def main(argv=None):
