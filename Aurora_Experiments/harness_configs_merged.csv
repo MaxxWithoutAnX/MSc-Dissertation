@@ -1,0 +1,10 @@
+tag,floor,guide,cost,balance,conservation,config,n_inits,tier
+W4W8_rmse_span1,W4,rmse,8.59079e+08,0.0617872,4.31765,bf16:cond_embed|dec2_mlp|decoder_heads|decoder_io|downsample|enc0_attn|enc0_mlp|encoder_io|upsample;W8:dec1_attn|dec1_mlp|enc1_attn|enc1_mlp,12,A
+W4W8_rmseup_span1,W4,rmse,9.42965e+08,0.0617872,4.10486,bf16:cond_embed|dec2_mlp|decoder_heads|decoder_io|downsample|enc0_attn|enc0_mlp|enc1_mlp|encoder_io|upsample;W8:dec1_attn|dec1_mlp|enc1_attn,12,A
+W4W8_span1,W4,physics,8.81099e+08,1.15075,0.72567,bf16:cond_embed|dec2_attn|decoder_heads|decoder_io|downsample|enc0_attn|enc0_mlp|encoder_io|upsample;W8:dec0_attn|dec1_attn|dec1_mlp|dec2_mlp|enc1_attn,12,A
+W8A8_knee,W8A8,physics,0.00154814,10.073,5.0415,bf16:decoder_heads,12,A
+W8A8_rmseup_knee,W8A8,rmse,0.00801292,9.38297,4.0894,bf16:cond_embed|decoder_heads|downsample|film,12,A
+W8A8_rmseup_span1,W8A8,rmse,0.315308,6.16963,1.93967,bf16:cond_embed|decoder_heads|downsample|enc0_attn|enc0_mlp|enc1_attn|enc1_mlp|encoder_io|film|upsample,12,A
+W4W8_rmse_span2,W4,rmse,1.11074e+09,0,3.93117,bf16:cond_embed|dec1_attn|dec1_mlp|dec2_mlp|decoder_heads|decoder_io|downsample|enc0_attn|enc0_mlp|enc1_attn|enc1_mlp|encoder_io|upsample,12,B
+W4W8_span2,W4,physics,1.15163e+09,0,0.194603,bf16:cond_embed|dec1_attn|dec2_attn|decoder_heads|decoder_io|downsample|enc0_attn|enc0_mlp|enc1_attn|enc1_mlp|encoder_io|upsample;W8:dec0_attn|dec1_mlp|dec2_mlp|film,12,B
+W4W8_span3,W4,physics,1.40748e+09,0,0.0527429,bf16:cond_embed|dec1_attn|dec2_attn|decoder_heads|decoder_io|downsample|enc0_attn|enc0_mlp|enc1_attn|enc1_mlp|encoder_io|film|upsample;W8:dec0_attn|dec0_mlp|dec1_mlp|dec2_mlp,12,B
