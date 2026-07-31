@@ -81,38 +81,56 @@ import csv as _csv
 from collections import defaultdict
 
 
-def load_distortion_table(scheme_csvs, lead=120):
+def load_distortion_table(scheme_csvs, lead=120, axes=CONSISTENCY_AXES,
+                          reducer=None, families=None, min_effect_frac=0.0,
+                          axis_floor=0.0):
     import ablation_comp as ac
     from plot_common import AGG_CLASS
     d = defaultdict(lambda: defaultdict(dict))
     groups = set()
     for precision, path in scheme_csvs.items():
-        # accumulate per (group, axis, family) distortion means at this lead
         acc = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
         with open(path, newline="") as fh:
             for row in _csv.DictReader(fh):
                 if int(float(row["lead"])) != lead:
                     continue
-                fam = _family_of_metric(row["metric"])        # Minor 2: compute once
+                fam = _family_of_metric(row["metric"])
                 axis = AGG_CLASS.get(fam)
-                if axis not in CONSISTENCY_AXES:
+                if axis not in axes:
                     continue
                 acc[row["group"]][axis][fam].append(float(row["distortion"]))
-        for g, axes in acc.items():
+        for g, axesd in acc.items():
             groups.add(g)
-            for a in CONSISTENCY_AXES:
+            for a in axes:
                 fam_vals = {}
-                for f, v in axes.get(a, {}).items():
+                for f, v in axesd.get(a, {}).items():
+                    if families and a in families and f not in families[a]:
+                        continue
                     finite = [x for x in v if np.isfinite(x)]
                     fam_vals[f] = sum(finite) / len(finite) if finite else float("nan")
-                d[g][precision][a] = ac._reduce_axis(fam_vals, a) if fam_vals else 0.0
+                d[g][precision][a] = ac._reduce_axis(fam_vals, a, reducer) if fam_vals else 0.0
+    if min_effect_frac > 0.0 and axis_floor > 0.0:
+        raise ValueError(
+            "min_effect_frac and axis_floor are mutually exclusive -- applying both makes "
+            "the effective threshold impossible to state. Use axis_floor for selection; "
+            "min_effect_frac only to reproduce the pre-2026-07-31 frontier.")
+    if axis_floor > 0.0:
+        from axis_noise_floor import apply_absolute_floor
+        apply_absolute_floor(d, axes=list(axes), floor=axis_floor)
+    elif min_effect_frac > 0.0:
+        from axis_noise_floor import apply_floor
+        apply_floor(d, axes=list(axes), frac=min_effect_frac)
     for g in groups:                     # bf16 = protected reference
-        d[g]["bf16"] = {a: 0.0 for a in CONSISTENCY_AXES}
+        d[g]["bf16"] = {a: 0.0 for a in axes}
     return {g: dict(p) for g, p in d.items()}
 
 
 def _family_of_metric(label):
     """Map a sensitivity.csv metric label back to its registry family key."""
+    if label.startswith("RMSE"):
+        return "RMSE"
+    if label.startswith("LapseW1"):
+        return "lapse_rate"
     if label.startswith(("Vag/Vg", "|Vag|")):
         return "wind_balance"
     if label.startswith("div/vort"):

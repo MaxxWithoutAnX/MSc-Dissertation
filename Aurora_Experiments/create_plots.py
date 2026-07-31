@@ -541,8 +541,8 @@ cols, labels = [], []
 for spec in specs:
     v = per_init_series(run, spec, SPEARMAN_LT)
     v = deseasonalize(v, dates, "monthly_anom")
-    if np.std(v) == 0:      # e.g. EffRes pinned at the grid limit - uninformative
-        print(f"Spearman: dropping constant column {spec.label!r}")
+    if np.std(v) == 0 or not np.all(np.isfinite(v)):
+        print(f"Spearman: dropping constant/non-finite column {spec.label!r}")
         continue
     cols.append(v)
     labels.append(spec.label)

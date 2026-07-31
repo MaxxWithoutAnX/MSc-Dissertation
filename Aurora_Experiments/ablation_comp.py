@@ -1,4 +1,6 @@
 """OAT per-layer quantisation-sensitivity analysis for the sampled-2020 ablations."""
+import physq_path
+
 import argparse
 import csv
 import glob
@@ -34,8 +36,12 @@ AXIS_REPRESENTATIVE = {"balance": "wind_balance", "conservation": "dry_air_mass"
 
 
 def _reduce_axis(family_values, axis, reducer=None):
-    """Reduce {family: value} for one axis to a scalar per `reducer`."""
-    reducer = reducer or AXIS_REDUCER
+    """Reduce {family: value} for one axis to a scalar per `reducer`.
+    `reducer` None -> resolve from AXIS_REDUCER, which may be a mode string or a
+    {axis: mode} dict (unlisted axes fall back to 'representative')."""
+    if reducer is None:
+        reducer = (AXIS_REDUCER.get(axis, "representative")
+                   if isinstance(AXIS_REDUCER, dict) else AXIS_REDUCER)
     vals = {k: v for k, v in family_values.items() if np.isfinite(v)}
     if not vals:
         return float("nan")
@@ -657,8 +663,6 @@ def _scheme_of(cfg_dir):
 
 
 def collinearity_matrix(records, labels, groups, lead):
-    """Spearman matrix over the per-group mean_delta vectors of `labels` at `lead`.
-    High |rho| between balance families = redundant instruments (double-counting)."""
     idx = record_index(records)
     cols = []
     present = []
@@ -667,17 +671,20 @@ def collinearity_matrix(records, labels, groups, lead):
         if len(vec) == len(groups):
             cols.append(vec)
             present.append(l)
+    if len(cols) < 2:
+        return None, present
     X = np.column_stack(cols)
     return spearman_matrix(X), present
 
 
 def plot_collinearity(records, all_labels, groups, lead, out_dir):
-    """Balance-family collinearity heatmap + CSV (the evidence behind AXIS_REDUCER)."""
     labels = [l for l in all_labels
               if any(t in l for t in ("Vag", "div/vort", "Hyps"))]
     if len(labels) < 2:
         return
     M, present = collinearity_matrix(records, labels, groups, lead)
+    if M is None:
+        return
     fig, ax = plt.subplots(figsize=(0.5 * len(present) + 2, 0.5 * len(present) + 2))
     ax.imshow(M, vmin=-1, vmax=1, cmap="RdBu_r")
     for i in range(len(present)):

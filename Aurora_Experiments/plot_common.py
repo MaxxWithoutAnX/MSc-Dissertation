@@ -47,6 +47,7 @@ PSD_UNITS = {
 
 EARTH_CIRCUMFERENCE_KM = 40075.0   # equatorial - conventional choice for zonal spectra
 EFF_RES_THRESHOLD = 0.5
+SPEC_RES_LOG_LMAX_FRAC = 0.5
 BAND_EDGES_KM = [(150.0, 500.0), (500.0, 1000.0), (1000.0, np.inf)]
 PROFILE_LEVELS_HEADLINE = [850, 500, 250]
 
@@ -281,8 +282,10 @@ MetricSpec = namedtuple("MetricSpec", "label group name_fmt kind transform deriv
 AGG_CLASS = {
     "RMSE": "standard",                    # + ACC/bias when added to the registry
     "wind_balance": "balance", "div_vort": "balance", "hypsometric": "balance",
+    "lapse_rate": "balance",
     "dry_air_mass": "conservation", "neg_humidity": "conservation",
     "spec_div": "spectral", "spec_res": "spectral",
+    "spec_res_log": "spectral", "spec_div_w1": "spectral",
     "RQE": "extremes",
     "dke_pert": "perturbation",
 }
@@ -325,6 +328,26 @@ def _eff_res_series(var):
     return fn
 
 
+def _spec_res_log_series(var):
+    def fn(run, lead):
+        from eval_metrics import spec_res_log
+        p = run.spectrum_stack("sh power spectrum", f"sh_psd_preds_{var}_{{lt}}", lead)
+        t = run.spectrum_stack("sh power spectrum", f"sh_psd_truth_{var}_{{lt}}", lead)
+        l_max = max(1, int(len(p[0]) * SPEC_RES_LOG_LMAX_FRAC))
+        return np.array([spec_res_log(p[i], t[i], l_max=l_max) for i in range(len(p))])
+    return fn
+
+
+def _spec_div_w1_series(var):
+    """[D] paper Wasserstein spectral divergence per init, from stored SH spectra."""
+    def fn(run, lead):
+        from eval_metrics import spec_div_w1
+        p = run.spectrum_stack("sh power spectrum", f"sh_psd_preds_{var}_{{lt}}", lead)
+        t = run.spectrum_stack("sh power spectrum", f"sh_psd_truth_{var}_{{lt}}", lead)
+        return np.array([spec_div_w1(p[i], t[i]) for i in range(len(p))])
+    return fn
+
+
 def _dke_band_frac_series(level, wl_max_km=1000.0):
     def fn(run, lead):
         wl = run.sh_wavelength_km()
@@ -343,6 +366,10 @@ def metric_registry(run):
         specs.append(MetricSpec(f"SpecDiv> {label}", "spec_div", f"sh_spec_div_{var}_{{lt}}", "error_pos"))
         specs.append(MetricSpec(f"SpecDiv< {label}", "spec_div", f"sh_spec_div_back_{var}_{{lt}}", "error_pos"))
         specs.append(MetricSpec(f"SpecRes {label}", "spec_res", f"sh_spec_res_{var}_{{lt}}", "error_pos"))
+        specs.append(MetricSpec(f"SpecResLog {label}", "spec_res_log", None, "error_pos", None,
+                                _spec_res_log_series(var)))
+        specs.append(MetricSpec(f"SpecDivW1 {label}", "spec_div_w1", None, "error_pos", None,
+                                _spec_div_w1_series(var)))
         specs.append(MetricSpec(f"|RQE| {label}", "RQE", f"rqe_{var}_{{lt}}", "error_pos", np.abs))
     wbal_levels = [L for L in PROFILE_LEVELS_HEADLINE if L in run.levels("wind_balance")]
     for L in wbal_levels:
@@ -356,6 +383,10 @@ def metric_registry(run):
     pair = _mid_trop_pair(run.hyps_pairs())
     specs.append(MetricSpec(f"HypsRel {pair}", "hypsometric", None, "error_pos",
                             None, _hyps_rel_series(pair)))
+    lt0 = run.leads[0]
+    sample0 = run.data[run.dates[0]][lt0]
+    if "lapse_rate" in sample0 and f"lapse_w1_mean_{lt0}" in sample0["lapse_rate"]:
+        specs.append(MetricSpec("LapseW1 mean", "lapse_rate", "lapse_w1_mean_{lt}", "error_pos"))
     specs.append(MetricSpec("|DryAir Md err|", "dry_air_mass",
                             "dryair_Md_err_{lt}", "error_pos", np.abs))
     specs.append(MetricSpec("neg-q fraction", "neg_humidity",
