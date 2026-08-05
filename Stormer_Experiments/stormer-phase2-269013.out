@@ -1,0 +1,74 @@
+=== START: Sat  1 Aug 05:13:33 BST 2026 ===
+preflight OK
+--- build_cost_tables ---
+checkpoint at /vol/bitbucket/mes25/stormer_checkpoints/stormer_1.40625_patch_size_2.ckpt could not be deserialised (ModuleNotFoundError: No module named 'climate_learn'); skipping the weight-level cross-check. Params and FLOPs are architecture-determined and are still guarded by EXPECTED_TOTAL_PARAMS.
+group                   params  param%       flops   flop%
+b0-5_mlp            50,331,648   11.0%   8.246e+11  16.59%
+b6-11_mlp           50,331,648   11.0%   8.246e+11  16.59%
+b12-17_mlp          50,331,648   11.0%   8.246e+11  16.59%
+b18-23_mlp          50,331,648   11.0%   8.246e+11  16.59%
+b0-5_attn           25,165,824    5.5%   4.123e+11   8.30%
+b6-11_attn          25,165,824    5.5%   4.123e+11   8.30%
+b12-17_attn         25,165,824    5.5%   4.123e+11   8.30%
+b18-23_attn         25,165,824    5.5%   4.123e+11   8.30%
+embed                1,048,576    0.2%   1.718e+10   0.35%
+head                   282,624    0.1%   4.631e+09   0.09%
+adaln              153,092,096   33.5%   3.062e+08   0.01%
+wrote /vol/bitbucket/mes25/stormer_pipeline/cost_tables.pt (11 groups; 456,413,184 params; 4.970e+12 FLOPs)
+
+real	3m43.991s
+user	2m29.368s
+sys	0m12.924s
+--- run_stormer_frontiers ---
+NOTE: the SmoothQuant overlay is NOT an independent observation for `embed` -- its W8A8_sq OAT row is bitwise identical to plain W8A8 (160/160 cells). See ablation_analysis_ablations_W8A8_sq/NOTE.md.
+A_W4W8       physics= 32 pts  rmse= 19 pts  b2 variants=7
+             protected order (representative|wind): ['head', 'embed', 'b18-23_attn', 'b18-23_mlp']
+B_W8A8       physics= 15 pts  rmse= 10 pts  b2 variants=7
+             protected order (representative|wind): ['adaln', 'embed', 'head', 'b18-23_mlp']
+B_W8A8_sq    physics= 20 pts  rmse= 10 pts  b2 variants=7
+             protected order (representative|wind): ['adaln', 'head', 'embed', 'b18-23_mlp']
+
+ALL FRONTIERS ARE UNGATED (no Stormer noise-floor ensemble exists).
+
+real	0m10.794s
+user	0m3.219s
+sys	0m1.893s
+--- select_stormer_configs ---
+derived probes: divergent=('head', 'b18-23_mlp')  rmse_favoured=('b6-11_mlp', 'b6-11_attn')
+  dedup collapsed 8 duplicate config(s): W4W8_rmse_knee, W4W8_rmseup_knee, W8A8_rmse_knee, W8A8_rmseup_knee, W8A8_rmseup_span2, W8A8_sq_rmse_span2, W8A8_sq_rmseup_span1, W8A8_sq_rmseup_span3
+wrote stormer_harness_configs.csv (38 unique models)
+  physics  12
+  probe    2
+  random   4
+  rmse     16
+  uniform  4
+
+MANIFEST IS UNGATED (no Stormer noise-floor ensemble exists).
+
+real	0m4.073s
+user	0m1.889s
+sys	0m0.639s
+--- artifacts ---
+-rw-r--r-- 1 mes25 mai 1328 Aug  1 05:17 cost_tables.pt
+-rw-r--r-- 1 mes25 mai 4296 Aug  1 05:17 stormer_harness_configs.csv
+total 785
+drwxr-xr-x  2 mes25 mai     18 Aug  1 05:17 .
+drwxr-xr-x 12 mes25 mai     56 Aug  1 05:17 ..
+-rw-r--r--  1 mes25 mai   4220 Aug  1 05:17 frontier_A_W4W8_physics.csv
+-rw-r--r--  1 mes25 mai 159802 Aug  1 05:17 frontier_A_W4W8.png
+-rw-r--r--  1 mes25 mai   2676 Aug  1 05:17 frontier_A_W4W8_rmse.csv
+-rw-r--r--  1 mes25 mai   1927 Aug  1 05:17 frontier_B_W8A8_physics.csv
+-rw-r--r--  1 mes25 mai 190555 Aug  1 05:17 frontier_B_W8A8.png
+-rw-r--r--  1 mes25 mai   1197 Aug  1 05:17 frontier_B_W8A8_rmse.csv
+-rw-r--r--  1 mes25 mai   2764 Aug  1 05:17 frontier_B_W8A8_sq_physics.csv
+-rw-r--r--  1 mes25 mai 164626 Aug  1 05:17 frontier_B_W8A8_sq.png
+-rw-r--r--  1 mes25 mai   1250 Aug  1 05:17 frontier_B_W8A8_sq_rmse.csv
+-rw-r--r--  1 mes25 mai   2718 Aug  1 05:17 guide_order_A_W4W8_rmse.csv
+-rw-r--r--  1 mes25 mai   1220 Aug  1 05:17 guide_order_B_W8A8_rmse.csv
+-rw-r--r--  1 mes25 mai   1274 Aug  1 05:17 guide_order_B_W8A8_sq_rmse.csv
+-rw-r--r--  1 mes25 mai    857 Aug  1 05:17 protected_set_A_W4W8.csv
+-rw-r--r--  1 mes25 mai    857 Aug  1 05:17 protected_set_B_W8A8.csv
+-rw-r--r--  1 mes25 mai    857 Aug  1 05:17 protected_set_B_W8A8_sq.csv
+-rw-r--r--  1 mes25 mai  16731 Aug  1 05:17 random_W8A8.csv
+=== END:   Sat  1 Aug 05:17:53 BST 2026 ===
+=== ELAPSED: 260 seconds ===

@@ -1,23 +1,29 @@
-# Python-generated files
+# ---------------- Not published ----------------
+tests/
+docs/
+
+# ---------------- Python ----------------
 __pycache__/
 *.py[oc]
 build/
 dist/
 wheels/
 *.egg-info
-.pytest_cache
+.pytest_cache/
+.venv/
 
-# Virtual environments
-.venv
-data
-results
+# ---------------- Upstream third-party clone ----------------
+stormer/
 
+# ---------------- Large binaries: NEVER commit ----------------
+data/
+results_*/
+ablation_W*/
+ablations_W*/
 all_metrics*.pt
-results*
-plots
-plots_aurora_small
-docs
-data
-ablation_W*
-stormer
+harness_results*/*.pt
 stormer_*.ckpt
+*.nc
+
+# Reference papers (copyright + size)
+*.pdf

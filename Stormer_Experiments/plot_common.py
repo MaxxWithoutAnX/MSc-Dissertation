@@ -54,6 +54,8 @@ PAIRED_BLOCK = 6
 BAND_BLOCK = 6
 N_BOOT = 2000
 
+SPEC_RES_LOG_LMAX_FRAC = 0.5
+
 # levels/pairs lists are stored in-band under group-specific prefixes
 _LEVELS_KEY = {
     "wind_balance": "wbal_levels",
@@ -278,6 +280,24 @@ def spearman_matrix(X):
 MetricSpec = namedtuple("MetricSpec", "label group name_fmt kind transform derived_fn",
                         defaults=(None, None))
 
+AGG_CLASS = {
+    "RMSE": "standard",                    # + ACC/bias when added to the registry
+    "wind_balance": "balance", "div_vort": "balance", "hypsometric": "balance",
+    "dry_air_mass": "conservation", "neg_humidity": "conservation",
+    "spec_div": "spectral", "spec_res": "spectral",
+    "spec_res_log": "spectral", "spec_div_w1": "spectral",
+    "RQE": "extremes",
+    "dke_pert": "perturbation",
+}
+CONSISTENCY_CLASSES = ("balance", "conservation")
+AGG_CLASS_ORDER = ("standard", "balance", "conservation", "spectral", "extremes",
+                   "perturbation")
+
+
+def agg_class(spec):
+    """Aggregate class of a MetricSpec; None => excluded from all aggregates."""
+    return AGG_CLASS.get(spec.group)
+
 
 def _mid_trop_pair(pairs):
     """The hypsometric layer whose midpoint is closest to 550 hPa."""
@@ -307,6 +327,37 @@ def _dke_band_frac_series(level, wl_max_km=1000.0):
     return fn
 
 
+def _hyps_rel_series(pair, side="pred"):
+    """[D] thickness-normalised hypsometric residual: hyps_rms/hyps_thick.
+    A small difference of large terms, so the absolute residual scales with layer
+    thickness; dividing by the stored thickness makes it a comparable fraction."""
+    def fn(run, lead):
+        rms = run.scalar_at("hypsometric", f"hyps_rms_{side}_{pair}_{{lt}}", lead)
+        thick = run.scalar_at("hypsometric", f"hyps_thick_{side}_{pair}_{{lt}}", lead)
+        return rms / thick
+    return fn
+
+
+def _spec_res_log_series(var):
+    def fn(run, lead):
+        from eval_metrics import spec_res_log
+        p = run.spectrum_stack("sh power spectrum", f"sh_psd_preds_{var}_{{lt}}", lead)
+        t = run.spectrum_stack("sh power spectrum", f"sh_psd_truth_{var}_{{lt}}", lead)
+        l_max = max(1, int(len(p[0]) * SPEC_RES_LOG_LMAX_FRAC))
+        return np.array([spec_res_log(p[i], t[i], l_max=l_max) for i in range(len(p))])
+    return fn
+
+
+def _spec_div_w1_series(var):
+    """[D] paper Wasserstein spectral divergence per init, from stored SH spectra."""
+    def fn(run, lead):
+        from eval_metrics import spec_div_w1
+        p = run.spectrum_stack("sh power spectrum", f"sh_psd_preds_{var}_{{lt}}", lead)
+        t = run.spectrum_stack("sh power spectrum", f"sh_psd_truth_{var}_{{lt}}", lead)
+        return np.array([spec_div_w1(p[i], t[i]) for i in range(len(p))])
+    return fn
+
+
 def metric_registry(run):
     sample = run.data[run.dates[0]][run.leads[0]]
     specs = []
@@ -318,6 +369,11 @@ def metric_registry(run):
             specs.append(MetricSpec(f"SpecDiv< {label}", "spec_div", f"sh_spec_div_back_{var}_{{lt}}", "error_pos"))
         if "spec_res" in sample:
             specs.append(MetricSpec(f"SpecRes {label}", "spec_res", f"sh_spec_res_{var}_{{lt}}", "error_pos"))
+        if "sh power spectrum" in sample:
+            specs.append(MetricSpec(f"SpecResLog {label}", "spec_res_log", None, "error_pos", None,
+                                    _spec_res_log_series(var)))
+            specs.append(MetricSpec(f"SpecDivW1 {label}", "spec_div_w1", None, "error_pos", None,
+                                    _spec_div_w1_series(var)))
         if "RQE" in sample:
             specs.append(MetricSpec(f"|RQE| {label}", "RQE", f"rqe_{var}_{{lt}}", "error_pos", np.abs))
     if "wind_balance" in sample:
@@ -332,8 +388,8 @@ def metric_registry(run):
                                     f"divvort_ratio_pred_{L}_{{lt}}", "error_pos"))
     if "hypsometric" in sample:
         pair = _mid_trop_pair(run.hyps_pairs())
-        specs.append(MetricSpec(f"Hyps {pair}", "hypsometric",
-                                f"hyps_rms_pred_{pair}_{{lt}}", "error_pos"))
+        specs.append(MetricSpec(f"HypsRel {pair}", "hypsometric", None, "error_pos",
+                                None, _hyps_rel_series(pair)))
     if "dry_air_mass" in sample:
         specs.append(MetricSpec("|DryAir Md err|", "dry_air_mass",
                                 "dryair_Md_err_{lt}", "error_pos", np.abs))

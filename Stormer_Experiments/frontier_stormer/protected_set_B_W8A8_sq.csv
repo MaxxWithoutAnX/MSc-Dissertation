@@ -1,0 +1,8 @@
+variant,protected_order
+representative|wind,adaln|head|embed|b18-23_mlp|b18-23_attn|b6-11_attn|b12-17_attn|b0-5_attn|b12-17_mlp|b0-5_mlp|b6-11_mlp
+mean|all,head|adaln|embed|b18-23_attn|b18-23_mlp|b6-11_attn|b0-5_attn|b12-17_attn|b12-17_mlp|b6-11_mlp|b0-5_mlp
+mean|wind,head|adaln|embed|b18-23_attn|b18-23_mlp|b6-11_attn|b12-17_attn|b0-5_attn|b12-17_mlp|b0-5_mlp|b6-11_mlp
+mean|wind+hyps,adaln|head|embed|b18-23_attn|b6-11_attn|b18-23_mlp|b0-5_attn|b12-17_attn|b12-17_mlp|b0-5_mlp|b6-11_mlp
+mean|wind+lapse,head|adaln|embed|b18-23_attn|b18-23_mlp|b6-11_attn|b12-17_attn|b0-5_attn|b12-17_mlp|b0-5_mlp|b6-11_mlp
+mean|wind+both,adaln|head|embed|b18-23_attn|b6-11_attn|b18-23_mlp|b0-5_attn|b12-17_attn|b12-17_mlp|b0-5_mlp|b6-11_mlp
+first_pc|wind+both,head|adaln|embed|b18-23_attn|b18-23_mlp|b6-11_attn|b0-5_attn|b12-17_attn|b12-17_mlp|b0-5_mlp|b6-11_mlp

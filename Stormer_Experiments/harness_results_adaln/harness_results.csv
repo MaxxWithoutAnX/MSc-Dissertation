@@ -1,0 +1,2 @@
+tag,floor,guide,predicted_cost,balance,conservation,config,model_size_gb,latency_s_per_step,vram_peak_gb,vram_reserved_gb,n_inits,rollout_intervals,forwards_per_init
+W8A8_adaln_probe,W8A8,probe,,0.5080388739411056,0.20943793018140744,bf16:adaln|embed,0.969316702,1.4945796706846781,10.465281536,17.603493888,12,"6,12,24",49

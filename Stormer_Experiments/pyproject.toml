@@ -50,3 +50,6 @@ torchvision = { index = "pytorch-cu126" }
 dev = [
     "pytest>=9.0.3",
 ]
+
+[tool.pytest.ini_options]
+pythonpath = [".", "../Aurora_Experiments/physq_core"]

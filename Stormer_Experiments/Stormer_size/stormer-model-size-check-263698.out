@@ -1,0 +1,60 @@
+=== START: Tue 21 Jul 09:31:43 BST 2026 ===
+imported scripts
+device: cuda
+synthetic input ready!
+FP32
+/vol/bitbucket/mes25/stormer/stormer/models/iterative_module.py:78: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  checkpoint = torch.load(pretrained_path, map_location=torch.device("cpu"))
+Loading pre-trained checkpoint from: /vol/bitbucket/mes25/stormer_checkpoints/stormer_1.40625_patch_size_2.ckpt
+<All keys matched successfully>
+1.9 GB
+weights resident: 1.88 GB
+rollout time: 8.17 s
+peak allocated: 15.87 GB
+peak reserved : 22.74 GB
+W8
+Loading pre-trained checkpoint from: /vol/bitbucket/mes25/stormer_checkpoints/stormer_1.40625_patch_size_2.ckpt
+<All keys matched successfully>
+quantised model!
+0.5 GB
+weights resident: 0.59 GB
+rollout time: 6.36 s
+peak allocated: 14.57 GB
+peak reserved : 17.04 GB
+W8A8 (torch.compile)
+Loading pre-trained checkpoint from: /vol/bitbucket/mes25/stormer_checkpoints/stormer_1.40625_patch_size_2.ckpt
+<All keys matched successfully>
+quantised model!
+0.5 GB
+compiling (warmup rollout)...
+V0721 09:34:42.321000 1023587 site-packages/torch/_dynamo/guards.py:2813] [0/1] [__recompiles] Recompiling function forward in /vol/bitbucket/mes25/stormer/stormer/models/hub/stormer.py:180
+V0721 09:34:42.321000 1023587 site-packages/torch/_dynamo/guards.py:2813] [0/1] [__recompiles]     triggered by the following guard failure(s):
+V0721 09:34:42.321000 1023587 site-packages/torch/_dynamo/guards.py:2813] [0/1] [__recompiles]     - 0/0: tensor 'L['x']' dispatch key set mismatch. expected DispatchKeySet(CUDA, BackendSelect, ADInplaceOrView), actual DispatchKeySet(CUDA, BackendSelect)
+V0721 09:34:42.363000 1023587 site-packages/torch/_dynamo/guards.py:2813] [1/1] [__recompiles] Recompiling function forward in /vol/bitbucket/mes25/stormer/stormer/models/hub/weather_embedding.py:108
+V0721 09:34:42.363000 1023587 site-packages/torch/_dynamo/guards.py:2813] [1/1] [__recompiles]     triggered by the following guard failure(s):
+V0721 09:34:42.363000 1023587 site-packages/torch/_dynamo/guards.py:2813] [1/1] [__recompiles]     - 1/0: tensor 'L['x']' dispatch key set mismatch. expected DispatchKeySet(CUDA, BackendSelect, ADInplaceOrView), actual DispatchKeySet(CUDA, BackendSelect)
+V0721 09:34:42.406000 1023587 site-packages/torch/_dynamo/guards.py:2813] [4/1] [__recompiles] Recompiling function forward in /vol/bitbucket/mes25/conda/envs/climate/lib/python3.11/site-packages/timm/layers/patch_embed.py:117
+V0721 09:34:42.406000 1023587 site-packages/torch/_dynamo/guards.py:2813] [4/1] [__recompiles]     triggered by the following guard failure(s):
+V0721 09:34:42.406000 1023587 site-packages/torch/_dynamo/guards.py:2813] [4/1] [__recompiles]     - 4/0: tensor 'L['x']' dispatch key set mismatch. expected DispatchKeySet(CUDA, BackendSelect, ADInplaceOrView), actual DispatchKeySet(CUDA, BackendSelect)
+compile+warmup time: 72.27 s
+weights resident: 0.63 GB
+rollout time (warm): 5.85 s
+peak allocated: 9.98 GB
+peak reserved : 14.21 GB
+W4
+/vol/bitbucket/mes25/stormer/stormer/models/iterative_module.py:78: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  checkpoint = torch.load(pretrained_path, map_location=torch.device("cpu"))
+Loading pre-trained checkpoint from: /vol/bitbucket/mes25/stormer_checkpoints/stormer_1.40625_patch_size_2.ckpt
+<All keys matched successfully>
+quantised model!
+0.3 GB
+weights resident: 0.53 GB
+rollout time: 6.26 s
+peak allocated: 14.51 GB
+peak reserved : 16.99 GB
+
+real	3m21.031s
+user	2m9.716s
+sys	0m20.091s
+=== END:   Tue 21 Jul 09:35:12 BST 2026 ===
+=== ELAPSED: 209 seconds ===

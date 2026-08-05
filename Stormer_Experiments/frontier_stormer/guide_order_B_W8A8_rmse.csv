@@ -1,0 +1,11 @@
+k,cost,balance,conservation,protected,config
+0,0,0.950237,0.407754,,
+1,0.00345677,0.45525,0.284864,embed,bf16:embed
+2,0.00351838,0.449167,0.28053,embed|adaln,bf16:adaln|embed
+3,0.00445009,0.347381,0.25148,embed|adaln|head,bf16:adaln|embed|head
+4,0.0874126,0.340313,0.238601,embed|b6-11_attn|adaln|head,bf16:adaln|b6-11_attn|embed|head
+6,0.3363,0.270149,0.203461,embed|b0-5_mlp|b6-11_attn|b18-23_attn|adaln|head,bf16:adaln|b0-5_mlp|b18-23_attn|b6-11_attn|embed|head
+7,0.502225,0.25803,0.203025,embed|b0-5_mlp|b6-11_attn|b6-11_mlp|b18-23_attn|adaln|head,bf16:adaln|b0-5_mlp|b18-23_attn|b6-11_attn|b6-11_mlp|embed|head
+8,0.66815,0.0262131,0.0328402,embed|b0-5_mlp|b6-11_attn|b6-11_mlp|b18-23_attn|b18-23_mlp|adaln|head,bf16:adaln|b0-5_mlp|b18-23_attn|b18-23_mlp|b6-11_attn|b6-11_mlp|embed|head
+9,0.834075,0.0110405,0.0067005,embed|b0-5_mlp|b6-11_attn|b6-11_mlp|b12-17_mlp|b18-23_attn|b18-23_mlp|adaln|head,bf16:adaln|b0-5_mlp|b12-17_mlp|b18-23_attn|b18-23_mlp|b6-11_attn|b6-11_mlp|embed|head
+11,1,0,0,embed|b0-5_attn|b0-5_mlp|b6-11_attn|b6-11_mlp|b12-17_attn|b12-17_mlp|b18-23_attn|b18-23_mlp|adaln|head,bf16:adaln|b0-5_attn|b0-5_mlp|b12-17_attn|b12-17_mlp|b18-23_attn|b18-23_mlp|b6-11_attn|b6-11_mlp|embed|head

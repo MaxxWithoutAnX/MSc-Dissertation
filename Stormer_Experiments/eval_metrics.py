@@ -49,6 +49,22 @@ def lat_weighted_rmsb(pred, y, vars, lat, log_postfix):
             rmsb_dict[f"rmsb_{var}_{log_postfix}"] = torch.sqrt(torch.mean(error[i] * w_lat))
     return rmsb_dict
 
+
+def lat_weighted_signed_bias(pred, y, vars, lat, log_postfix):
+    err = pred - y                                          # [B, V, H, W]
+    w_lat = np.cos(np.deg2rad(lat))
+    w_lat = w_lat / w_lat.mean()
+    w_lat = torch.from_numpy(w_lat).unsqueeze(0).unsqueeze(-1).to(
+        dtype=err.dtype, device=err.device)                 # [1, H, 1]
+
+    out = {}
+    with torch.no_grad():
+        for i, var in enumerate(vars):
+            out[f"sbias_{var}_{log_postfix}"] = torch.mean(
+                torch.mean(err[:, i] * w_lat, dim=(-2, -1)))
+    return out
+
+
 def acc(pred, y, clim, vars, lat, log_postfix):
     w_lat = np.cos(np.deg2rad(lat))
     w_lat = w_lat / w_lat.mean()
@@ -223,6 +239,22 @@ def spectral_res(pred, y, vars, lat, log_postfix):
             spectral_res[f"spec_res_{var}_{log_postfix}"] = _res(psd, psd_gt)
             spectral_res[f"sh_spec_res_{var}_{log_postfix}"] = _res(sh_psd[i], sh_psd_gt[i])
     return spectral_res
+
+def spec_res_log(psd_pred, psd_truth, eps=1e-30, l_max=None):
+    p = np.asarray(psd_pred, dtype=np.float64)
+    t = np.asarray(psd_truth, dtype=np.float64)
+    if l_max is not None:
+        p, t = p[:l_max], t[:l_max]
+    return float(np.sqrt(np.mean((np.log(p + eps) - np.log(t + eps)) ** 2)))
+
+
+def spec_div_w1(psd_pred, psd_truth):
+    p = np.asarray(psd_pred, dtype=np.float64)
+    t = np.asarray(psd_truth, dtype=np.float64)
+    p = p / p.sum()
+    t = t / t.sum()
+    return float(np.sum(np.abs(np.cumsum(t) - np.cumsum(p))))
+
 
 def effective_resolution_wavelength(ratio, wavelength_km, threshold=0.5):
     ratio = np.asarray(ratio)
@@ -533,6 +565,67 @@ def hypsometric_residual(pred, y, vars, lat, log_postfix):
     return result
 
 
+REGIONS_LAPSE = {"tropics": (-30.0, 30.0), "nh_mid": (30.0, 60.0),
+                 "sh_mid": (-60.0, -30.0)}
+
+
+def _weighted_w1_1d(vp, wp, vt, wt):
+    vp = np.asarray(vp, dtype=np.float64); wp = np.asarray(wp, dtype=np.float64)
+    vt = np.asarray(vt, dtype=np.float64); wt = np.asarray(wt, dtype=np.float64)
+    vals = np.concatenate([vp, vt])
+    order = np.argsort(vals)
+    vals = vals[order]
+    cw_p = np.concatenate([wp / wp.sum(), np.zeros_like(wt)])[order]
+    cw_t = np.concatenate([np.zeros_like(wp), wt / wt.sum()])[order]
+    cdf_p = np.cumsum(cw_p)
+    cdf_t = np.cumsum(cw_t)
+    dv = np.diff(vals)
+    return float(np.sum(np.abs(cdf_p - cdf_t)[:-1] * dv))
+
+
+def lapse_rate_wasserstein(pred, y, vars, lat, log_postfix):
+    z_idx = _levels_for(vars, "geopotential_")
+    t_idx = _levels_for(vars, "temperature_")
+    result = {f"lapse_regions_{log_postfix}": list(REGIONS_LAPSE)}
+    need = {500, 850}
+    if not (need <= set(z_idx) and need <= set(t_idx)):
+        return result
+
+    lat = np.asarray(lat)
+    coslat = np.cos(np.deg2rad(lat))
+    with torch.no_grad():
+        def gamma(src):
+            dT = src[:, t_idx[500]] - src[:, t_idx[850]]
+            dPhi = src[:, z_idx[500]] - src[:, z_idx[850]]
+            return (-G * dT / dPhi * 1000.0)                 # [B, H, W], K/km
+
+        g_p = gamma(pred).detach().cpu().numpy()
+        g_t = gamma(y).detach().cpu().numpy()
+        B = g_p.shape[0]
+        w2d = np.broadcast_to(coslat[:, None], g_p.shape[-2:])   # [H, W]
+
+        regional = []
+        for name, (lo, hi) in REGIONS_LAPSE.items():
+            mask = (lat >= lo) & (lat <= hi)                    # [H]
+            m2d = np.broadcast_to(mask[:, None], g_p.shape[-2:])
+            wsel = (w2d * m2d).reshape(-1)
+            keep = wsel > 0
+            wcell = wsel[keep]
+            if wcell.size == 0:
+                w1 = float("nan")
+            else:
+                gp = g_p.reshape(B, -1)[:, keep].reshape(-1)
+                gt = g_t.reshape(B, -1)[:, keep].reshape(-1)
+                wtile = np.tile(wcell, B)                       # weights repeat per batch
+                w1 = _weighted_w1_1d(gp, wtile, gt, wtile)
+            result[f"lapse_w1_{name}_{log_postfix}"] = torch.tensor(
+                w1, dtype=pred.dtype, device=pred.device).cpu()
+            regional.append(w1)
+        result[f"lapse_w1_mean_{log_postfix}"] = torch.tensor(
+            float(np.mean(regional)), dtype=pred.dtype, device=pred.device).cpu()
+    return result
+
+
 def negative_humidity(pred, y, vars, lat, log_postfix):
     q_idx = _levels_for(vars, "specific_humidity_")
     levels = sorted(set(q_idx))
@@ -560,6 +653,8 @@ def compute_all_metrics(pred, y, clim, vars, lat, lead_time):
         "RMSE": lat_weighted_rmse(pred, y, vars, lat, log_postfix=str(lead_time)),
         "bias": bias(pred, y, vars, log_postfix=str(lead_time)),
         "lat_weighted_rmsb": lat_weighted_rmsb(pred, y, vars, lat, log_postfix=str(lead_time)),
+        "signed_bias": lat_weighted_signed_bias(pred, y, vars, lat,
+                                                log_postfix=str(lead_time)),
         "power spectrum": calculate_power_spectrums(pred, y, vars, lat, log_postfix=str(lead_time)),
         "sh power spectrum": calculate_sh_power_spectrums(pred, y, vars, lat, log_postfix=str(lead_time)),
         "RQE": rqe(pred, y, vars, log_postfix=str(lead_time)),
@@ -571,6 +666,7 @@ def compute_all_metrics(pred, y, clim, vars, lat, lead_time):
         "div_vort": divergence_vorticity(pred, y, vars, lat, log_postfix=str(lead_time)),
         "dke": difference_kinetic_energy(pred, y, vars, lat, log_postfix=str(lead_time)),
         "hypsometric": hypsometric_residual(pred, y, vars, lat, log_postfix=str(lead_time)),
+        "lapse_rate": lapse_rate_wasserstein(pred, y, vars, lat, log_postfix=str(lead_time)),
         "neg_humidity": negative_humidity(pred, y, vars, lat, log_postfix=str(lead_time)),
     }
     if clim is not None:
