@@ -1,25 +1,33 @@
-# Python-generated files
+# ---------------- Not published ----------------
+tests/
+docs/
+
+# ---------------- OS ----------------
+.DS_Store
+
+# ---------------- Python ----------------
 __pycache__/
 *.py[oc]
 build/
 dist/
 wheels/
 *.egg-info
+.pytest_cache/
+.venv/
 
-# Virtual environments
-.venv
-data
-results
-
+# ---------------- Large binaries: NEVER commit ----------------
+data/
+results_*/
+ablations_W*/
+ablation_W*_sampled/
+noise_floor_ens/
 all_metrics*.pt
-results*
-plots
-plots_aurora_small
-docs
-data
-ablation_W*_sampled
-ablation_analysis_legacy_binary_agg
-ablations_*
-.pytest_cache
-tests
+harness_results*/*.pt
+*.ckpt
+*.nc
 *.pdf
+
+# ---------------- Regenerable output ----------------
+figures_check/
+
+# Working notes, not published

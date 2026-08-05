@@ -26,10 +26,18 @@ def family_deltas(fp32_run, config_run, specs, lead, dates=None,
     return deltas, denoms
 
 
-def axis_value(deltas, denoms, idx):
+_AGGREGATORS = {"mean": np.mean, "median": np.median}
+
+
+def axis_value(deltas, denoms, idx, agg="mean"):
+    try:
+        fn = _AGGREGATORS[agg]
+    except KeyError:
+        raise ValueError(f"unknown aggregator {agg!r}; expected one of "
+                         f"{sorted(_AGGREGATORS)}") from None
     vals = [abs(float(deltas[l][idx].mean())) / denoms[l]
             for l in deltas if denoms.get(l, 0.0) > 0]
-    return float(np.mean(vals)) if vals else float("nan")
+    return float(fn(vals)) if vals else float("nan")
 
 
 def boot_indices(n_dates, block=2, n_boot=4000, seed=0):

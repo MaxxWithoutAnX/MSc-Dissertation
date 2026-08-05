@@ -51,4 +51,5 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-pythonpath = ["."]
+pythonpath = [".", "physq_core"]
+addopts = "--ignore=old_figure_drivers"

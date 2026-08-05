@@ -1,4 +1,6 @@
 """Precision-harness pre-flight: clear both cluster blockers in one short GPU job."""
+import physq_path
+
 import argparse
 import sys
 

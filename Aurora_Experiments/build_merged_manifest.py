@@ -94,7 +94,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--corrected", default="harness_configs_corrected.csv")
-    ap.add_argument("--measured", default=os.path.join("harness_results",
+    ap.add_argument("--measured", default=os.path.join("harness_results_merged",
                                                        "harness_results.csv"))
     ap.add_argument("--out", default="harness_configs_merged.csv")
     ap.add_argument("--n-headline", type=int, default=48)
