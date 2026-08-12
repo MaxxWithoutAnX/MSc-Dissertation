@@ -39,9 +39,9 @@ def _write(path, fields, rows):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--pt", default=os.path.join("harness_results_2021_stormer",
+    ap.add_argument("--pt", default=os.path.join("harness_results_n47",
                                                  "harness_results.pt"))
-    ap.add_argument("--outdir", default="harness_results_2021_stormer")
+    ap.add_argument("--outdir", default="harness_results_n47")
     ap.add_argument("--lead", type=int, default=120)
     a = ap.parse_args(argv)
 

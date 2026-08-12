@@ -1,0 +1,26 @@
+# DESCRIPTIVE ONLY -- all 6 pairs x 4 leads. The headline pair is W8A8_span1|W8A8_rmse_span1 alone.
+pair,endpoint,lead,physics,rmse,ratio,physics_argmax,rmse_argmax
+W8A8_span1|W8A8_rmse_span1,"max(balance,conservation)",24,0.039922872834138444,0.08576570080005548,2.14828479794962,balance,balance
+W8A8_span2|W8A8_rmse_span2,"max(balance,conservation)",24,0.030654829617978562,0.05801199626820804,1.8924259893516076,balance,balance
+W8A8_span3|W8A8_rmse_span3,"max(balance,conservation)",24,0.007523704253903379,0.013331276066131034,1.7719032561938655,balance,balance
+W4W8_span1|W4W8_rmse_span1,"max(balance,conservation)",24,0.05709445705995542,0.26513144927212795,4.643733611368105,balance,balance
+W4W8_span2|W4W8_rmse_span2,"max(balance,conservation)",24,0.03051312492122738,0.051611649204114714,1.6914573429419386,conservation,conservation
+W4W8_span3|W4W8_rmse_span3,"max(balance,conservation)",24,0.003786430507605814,0.006869439827603743,1.8142257764417118,balance,balance
+W8A8_span1|W8A8_rmse_span1,"max(balance,conservation)",72,0.06943550004064376,0.16579214108116055,2.3877143677818244,balance,balance
+W8A8_span2|W8A8_rmse_span2,"max(balance,conservation)",72,0.04909409738452531,0.12126886509524397,2.470131269456203,balance,balance
+W8A8_span3|W8A8_rmse_span3,"max(balance,conservation)",72,0.012940438582754296,0.021194260138158765,1.6378316702808144,balance,balance
+W4W8_span1|W4W8_rmse_span1,"max(balance,conservation)",72,0.14619780145257646,0.857961540927849,5.868498242814916,balance,conservation
+W4W8_span2|W4W8_rmse_span2,"max(balance,conservation)",72,0.06619321163460079,0.11153724487300869,1.685025429627371,conservation,conservation
+W4W8_span3|W4W8_rmse_span3,"max(balance,conservation)",72,0.008038961614507742,0.014025732412805603,1.7447194159372106,balance,balance
+W8A8_span1|W8A8_rmse_span1,"max(balance,conservation)",120,0.07439225281282379,0.25531768649189485,3.4320467096794656,balance,balance
+W8A8_span2|W8A8_rmse_span2,"max(balance,conservation)",120,0.054600489585739355,0.19978735934069639,3.659076335331564,balance,balance
+W8A8_span3|W8A8_rmse_span3,"max(balance,conservation)",120,0.008477218677740006,0.01715899587830372,2.024130381744292,balance,balance
+W4W8_span1|W4W8_rmse_span1,"max(balance,conservation)",120,0.3000238128226823,0.9124280971820892,3.0411855932293785,balance,balance
+W4W8_span2|W4W8_rmse_span2,"max(balance,conservation)",120,0.10758001303411847,0.05974677117375782,0.5553705515429658,balance,balance
+W4W8_span3|W4W8_rmse_span3,"max(balance,conservation)",120,0.009779479517523589,0.016004892572472524,1.6365791802921397,balance,balance
+W8A8_span1|W8A8_rmse_span1,"max(balance,conservation)",168,0.04973531665376421,0.3067134261271522,6.166914111804265,balance,balance
+W8A8_span2|W8A8_rmse_span2,"max(balance,conservation)",168,0.04467930235577197,0.25617496920204436,5.733638523766026,balance,balance
+W8A8_span3|W8A8_rmse_span3,"max(balance,conservation)",168,0.006464835545447832,0.025463752718883532,3.9388090446962183,balance,balance
+W4W8_span1|W4W8_rmse_span1,"max(balance,conservation)",168,0.42583683949401063,1.1697295474066303,2.7468960853563784,balance,balance
+W4W8_span2|W4W8_rmse_span2,"max(balance,conservation)",168,0.12699094839775982,0.09534109990723198,0.750770831387175,balance,balance
+W4W8_span3|W4W8_rmse_span3,"max(balance,conservation)",168,0.007769300766185136,0.01195334781501921,1.5385358573122294,balance,conservation

@@ -17,9 +17,9 @@ REMOVED_TAGS = ["W8A8_knee", "W8A8_span1", "W8A8_rmse_span1",
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0],
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--pt", default=os.path.join("harness_results_2021_stormer",
+    ap.add_argument("--pt", default=os.path.join("harness_results_n47",
                                                  "harness_results.pt"))
-    ap.add_argument("--outdir", default="harness_results_2021_stormer")
+    ap.add_argument("--outdir", default="harness_results_n47")
     ap.add_argument("--lead", type=int, default=120)
     ap.add_argument("--n-boot", type=int, default=4000, dest="n_boot")
     a = ap.parse_args(argv)
