@@ -36,9 +36,9 @@ def cost_excess(csv_path):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--pt", default=os.path.join("harness_results_merged",
+    ap.add_argument("--pt", default=os.path.join("harness_results_n48",
                                                  "harness_results.pt"))
-    ap.add_argument("--outdir", default="harness_results_merged")
+    ap.add_argument("--outdir", default="harness_results_n48")
     ap.add_argument("--lead", type=int, default=120)
     ap.add_argument("--family", default="wind_balance")
     a = ap.parse_args(argv)

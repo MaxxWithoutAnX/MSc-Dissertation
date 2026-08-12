@@ -17,9 +17,9 @@ LEADS = (24, 72, 120, 168)
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0],
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--pt", default=os.path.join("harness_results_merged",
+    ap.add_argument("--pt", default=os.path.join("harness_results_n48",
                                                  "harness_results.pt"))
-    ap.add_argument("--outdir", default="harness_results_merged")
+    ap.add_argument("--outdir", default="harness_results_n48")
     a = ap.parse_args(argv)
 
     pt = torch.load(a.pt, map_location="cpu", weights_only=False)

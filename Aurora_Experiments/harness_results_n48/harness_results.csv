@@ -1,0 +1,10 @@
+tag,floor,guide,predicted_cost,balance,conservation,config,model_size_gb,latency_s_per_step,vram_peak_gb,vram_reserved_gb,n_inits
+W4W8_rmse_span1,W4,rmse,8.59079e+08,0.110449,3.21963,bf16:cond_embed|dec2_mlp|decoder_heads|decoder_io|downsample|enc0_attn|enc0_mlp|encoder_io|upsample;W8:dec1_attn|dec1_mlp|enc1_attn|enc1_mlp,1.12335,3.40827,17.6959,24.9792,48
+W4W8_rmseup_span1,W4,rmse,9.42965e+08,0.0966246,3.27454,bf16:cond_embed|dec2_mlp|decoder_heads|decoder_io|downsample|enc0_attn|enc0_mlp|enc1_mlp|encoder_io|upsample;W8:dec1_attn|dec1_mlp|enc1_attn,1.37438,3.41197,17.947,24.9792,48
+W4W8_span1,W4,physics,8.81099e+08,0.540791,1.02995,bf16:cond_embed|dec2_attn|decoder_heads|decoder_io|downsample|enc0_attn|enc0_mlp|encoder_io|upsample;W8:dec0_attn|dec1_attn|dec1_mlp|dec2_mlp|enc1_attn,1.12607,3.41304,17.6986,24.4004,48
+W8A8_knee,W8A8,physics,0.00154814,4.47843,3.04798,bf16:decoder_heads,1.26349,2.3039,19.5637,25.3902,48
+W8A8_rmseup_knee,W8A8,rmse,0.00801292,4.14293,3.13145,bf16:cond_embed|decoder_heads|downsample|film,1.66745,2.26304,19.9677,24.9205,48
+W8A8_rmseup_span1,W8A8,rmse,0.315308,3.776,1.16417,bf16:cond_embed|decoder_heads|downsample|enc0_attn|enc0_mlp|enc1_attn|enc1_mlp|encoder_io|film|upsample,2.15211,2.48399,20.4524,25.5014,48
+W4W8_rmse_span2,W4,rmse,1.11074e+09,0.0860978,3.264,bf16:cond_embed|dec1_attn|dec1_mlp|dec2_mlp|decoder_heads|decoder_io|downsample|enc0_attn|enc0_mlp|enc1_attn|enc1_mlp|encoder_io|upsample,1.87605,3.42472,18.4487,25.0819,48
+W4W8_span2,W4,physics,1.15163e+09,0.141188,0.0942873,bf16:cond_embed|dec1_attn|dec2_attn|decoder_heads|decoder_io|downsample|enc0_attn|enc0_mlp|enc1_attn|enc1_mlp|encoder_io|upsample;W8:dec0_attn|dec1_mlp|dec2_mlp|film,1.70825,3.38686,18.2809,23.1337,48
+W4W8_span3,W4,physics,1.40748e+09,0.0619422,0.0876317,bf16:cond_embed|dec1_attn|dec2_attn|decoder_heads|decoder_io|downsample|enc0_attn|enc0_mlp|enc1_attn|enc1_mlp|encoder_io|film|upsample;W8:dec0_attn|dec0_mlp|dec1_mlp|dec2_mlp,2.17186,3.4253,18.7446,23.1064,48
