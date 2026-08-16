@@ -3,6 +3,7 @@
 import physq_path
 
 import argparse
+import os
 
 import figure_specs as fs
 
@@ -40,9 +41,9 @@ def main(argv=None):
     ap.add_argument("--model", default=None,
                     choices=("aurora", "stormer", "cross"), help="default: all")
     ap.add_argument("--aurora-root", default=".")
-    ap.add_argument("--aurora-results", default="harness_results_merged")
+    ap.add_argument("--aurora-results", default="harness_results_n48")
     ap.add_argument("--stormer-root", default="../Stormer")
-    ap.add_argument("--stormer-results", default="harness_results_2021_stormer")
+    ap.add_argument("--stormer-results", default="harness_results_n47")
     ap.add_argument("--outdir", default="figures")
     a = ap.parse_args(argv)
 

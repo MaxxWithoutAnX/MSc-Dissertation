@@ -132,7 +132,7 @@ def random_frontier(d_eval, cost, floor, seed):
     for k in range(len(groups) + 1):
         cfg = {g: ("bf16" if g in protected else floor) for g in groups}
         e = _axis_sum(d_eval, cfg, CONSISTENCY)
-        pts.append({"k": k, "cost": _cost_sum(cost, cfg),
+        pts.append({"k": k, "cost": _cost_sum(cost, cfg), "config": dict(cfg),
                     "balance": e["balance"], "conservation": e["conservation"]})
         if k < len(groups):
             protected.add(order[k])

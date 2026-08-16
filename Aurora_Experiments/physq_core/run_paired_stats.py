@@ -55,7 +55,7 @@ def compare_pairs(pt=None, lead=120, family="wind_balance", pairs=None, blocks=(
     else:
         tags = [t for pair in pairs for t in pair]
         deltas, denoms = _prepared(pt, lead, family, tags, dates, spread_method)
-    if not deltas:
+    if not deltas or not any(deltas.values()):
         return []
     n = len(next(iter(next(iter(deltas.values())).values())))
     rows = []

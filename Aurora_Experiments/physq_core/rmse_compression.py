@@ -13,16 +13,24 @@ def headline_keys(lead):
     return [f"w_rmse_{v}_{lead}" for v in HEADLINE.values()]
 
 
+def tag_data(pt, tag):
+    d = pt[tag]
+    if isinstance(d, dict) and isinstance(d.get("metrics"), dict):
+        return d["metrics"]
+    return d
+
+
 def _per_init_fracs(pt, tag, lead, variables):
     """(config - fp32)/fp32 per init, averaged over variables. Shape (n_dates,)."""
-    fp = pt["FP32"]
+    fp = tag_data(pt, "FP32")
+    cfg = tag_data(pt, tag)
     inits = sorted(fp.keys())
     out = []
     for i in inits:
         per_var = []
         for vk in variables:
             f = float(fp[i][lead]["RMSE"][vk])
-            c = float(pt[tag][i][lead]["RMSE"][vk])
+            c = float(cfg[i][lead]["RMSE"][vk])
             per_var.append((c - f) / f)
         out.append(float(np.mean(per_var)))
     return np.asarray(out)
