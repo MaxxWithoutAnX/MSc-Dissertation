@@ -14,6 +14,24 @@ FIELDS = ["scheme", "role", "tag", "lead", "deg_pct"]
 OUT_NAME = "harness_rmse_lead_families.csv"
 
 
+def split_tag(tag, schemes):
+    for scheme in sorted(schemes, key=len, reverse=True):
+        if tag.startswith(scheme + "_"):
+            return scheme, tag[len(scheme) + 1:]
+    return "", tag
+
+
+def wanted_tags():
+    """Every tag figA16 and figA16b can draw: the ceiling, each scheme's physics roles, and
+    each scheme's RMSE-GUIDED twins. One extraction serves both figures -- the .pt pass is
+    the expensive part and neither figure is worth a second one."""
+    schemes = [s for s, _ in fs.RMSE_LEAD_SCHEMES]
+    roles = [r for r, _, _, _ in fs.RMSE_LEAD_ROLES]
+    roles += [r for r, _, _, _ in fs.RMSE_LEAD_GUIDED_ROLES]
+    out = ["ceiling"] + [f"{s}_{r}" for s in schemes for r in roles]
+    return list(dict.fromkeys(out))
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0],
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -25,18 +43,13 @@ def main(argv=None):
     pt = torch.load(a.pt, map_location="cpu", mmap=True, weights_only=False)
     os.makedirs(a.outdir, exist_ok=True)
 
-    # Every tag the figure can draw: the ceiling reference plus each scheme's roles.
-    wanted = ["ceiling"] + [f"{scheme}_{role}"
-                            for scheme, _ in fs.RMSE_LEAD_SCHEMES
-                            for role, _, _, _ in fs.RMSE_LEAD_ROLES]
+    wanted = wanted_tags()
     got = fc.prepare_rmse_lead_families(pt, wanted, leads, fs.RMSE_LEAD_VARS)
 
+    schemes = [s for s, _ in fs.RMSE_LEAD_SCHEMES]
     rows = []
     for tag, series in got.items():
-        if tag == "ceiling":
-            scheme, role = "", "ceiling"
-        else:
-            scheme, role = tag.rsplit("_", 1)
+        scheme, role = split_tag(tag, schemes)
         for lead, val in zip(leads, series):
             rows.append({"scheme": scheme, "role": role, "tag": tag,
                          "lead": lead, "deg_pct": f"{val:.6g}"})

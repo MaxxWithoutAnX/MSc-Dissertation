@@ -168,7 +168,11 @@ def rollout_metrics_over_inits(model, init_indices, make_batch, steps, lead_by_s
     return out
 
 
-def measured_consistency_axes(fp32_run, config_run, tag, lead, dates, noise_floor=None):
+CONSISTENCY_AXES = ("balance", "conservation")
+
+
+def measured_consistency_axes(fp32_run, config_run, tag, lead, dates, noise_floor=None,
+                              axes=CONSISTENCY_AXES):
     import ablation_comp as ac
     from distortion import NoiseFloor
     if noise_floor is None:
@@ -179,7 +183,7 @@ def measured_consistency_axes(fp32_run, config_run, tag, lead, dates, noise_floo
                                      [lead], dates, block, full_table=None,
                                      norm_mode="colmax", noise_floor=noise_floor)
     agg = ac.group_aggregates(records, specs, [tag], lead)[tag]
-    return {"balance": agg["balance_distortion"], "conservation": agg["conservation_distortion"]}
+    return {a: agg[f"{a}_distortion"] for a in axes}
 
 
 def measured_consistency_axes_all_leads(fp32_run, config_run, tag, leads, dates, noise_floor=None):

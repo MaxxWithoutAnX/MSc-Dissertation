@@ -34,6 +34,8 @@ STAGES = [
      lambda pt, out: ["--pt", pt, "--outdir", out]),
     ("figure_pt_extracts", "run_figure_pt_extracts",
      lambda pt, out: ["--pt", pt, "--outdir", out, "--results", out]),
+    ("standard_axis", "run_standard_axis",
+     lambda pt, out: ["--pt", pt, "--outdir", out]),
 ]
 
 
