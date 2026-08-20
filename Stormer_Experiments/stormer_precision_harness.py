@@ -261,7 +261,11 @@ def measure_config(tag, config, groups_map, build_model, loader, leads, variable
 
 # --- CHANGE 4 of 4: measured axes, pinned ungated -------------------------------------
 
-def measured_consistency_axes(fp32_run, config_run, tag, lead, dates, noise_floor=None):
+CONSISTENCY_AXES = ("balance", "conservation")
+
+
+def measured_consistency_axes(fp32_run, config_run, tag, lead, dates, noise_floor=None,
+                              axes=CONSISTENCY_AXES):
     import ablation_comp as ac
     from distortion import NoiseFloor
     if noise_floor is None:
@@ -272,8 +276,7 @@ def measured_consistency_axes(fp32_run, config_run, tag, lead, dates, noise_floo
                                      [lead], dates, block, full_table=None,
                                      norm_mode="colmax", noise_floor=noise_floor)
     agg = ac.group_aggregates(records, specs, [tag], lead)[tag]
-    return {"balance": agg["balance_distortion"],
-            "conservation": agg["conservation_distortion"]}
+    return {a: agg[f"{a}_distortion"] for a in axes}
 
 
 def measured_consistency_axes_all_leads(fp32_run, config_run, tag, leads, dates,
