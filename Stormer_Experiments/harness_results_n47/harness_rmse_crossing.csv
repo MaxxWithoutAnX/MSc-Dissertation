@@ -1,14 +1,6 @@
 # W8A8_floor minus W8A8_span1 RMSE degradation, percentage points, paired on initialisation date. DESCRIPTIVE: point estimates only, no interval and no test; only the 168h comparison was pre-registered.
-tag_a,tag_b,lead,block,diff_pp,ci_lo,ci_hi,excludes_zero,deg_a_pct,deg_b_pct
-W8A8_floor,W8A8_span1,24,1,1.4437,1.3825,1.5054,True,1.6798,0.2361
-W8A8_floor,W8A8_span1,24,2,1.4437,1.3898,1.5070,True,1.6798,0.2361
-W8A8_floor,W8A8_span1,24,3,1.4437,1.3965,1.5051,True,1.6798,0.2361
-W8A8_floor,W8A8_span1,72,1,1.0184,0.7616,1.2842,True,1.2072,0.1887
-W8A8_floor,W8A8_span1,72,2,1.0184,0.7332,1.3282,True,1.2072,0.1887
-W8A8_floor,W8A8_span1,72,3,1.0184,0.7383,1.3229,True,1.2072,0.1887
-W8A8_floor,W8A8_span1,120,1,0.5476,0.1753,0.9282,True,0.7393,0.1916
-W8A8_floor,W8A8_span1,120,2,0.5476,0.1874,0.9790,True,0.7393,0.1916
-W8A8_floor,W8A8_span1,120,3,0.5476,0.2075,0.9823,True,0.7393,0.1916
-W8A8_floor,W8A8_span1,168,1,0.3210,-0.1691,0.8055,False,0.4528,0.1318
-W8A8_floor,W8A8_span1,168,2,0.3210,-0.1804,0.8751,False,0.4528,0.1318
-W8A8_floor,W8A8_span1,168,3,0.3210,-0.1722,0.9128,False,0.4528,0.1318
+tag_a,tag_b,lead,diff_pp,deg_a_pct,deg_b_pct
+W8A8_floor,W8A8_span1,24,1.4437,1.6798,0.2361
+W8A8_floor,W8A8_span1,72,1.0184,1.2072,0.1887
+W8A8_floor,W8A8_span1,120,0.5476,0.7393,0.1916
+W8A8_floor,W8A8_span1,168,0.3210,0.4528,0.1318

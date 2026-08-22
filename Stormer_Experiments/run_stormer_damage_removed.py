@@ -21,7 +21,6 @@ def main(argv=None):
                                                  "harness_results.pt"))
     ap.add_argument("--outdir", default="harness_results_n47")
     ap.add_argument("--lead", type=int, default=120)
-    ap.add_argument("--n-boot", type=int, default=4000, dest="n_boot")
     a = ap.parse_args(argv)
 
     pt = unwrap_store(torch.load(a.pt, map_location="cpu", weights_only=False))
@@ -32,20 +31,17 @@ def main(argv=None):
 
     for axis, family in AXIS_FAMILIES.items():
         rows = rps.damage_removed(pt, lead=a.lead, family=family, tags=REMOVED_TAGS,
-                                  floor_tag=FLOOR_TAG, blocks=(1, 2, 3), n_boot=a.n_boot)
+                                  floor_tag=FLOOR_TAG)
         if not rows:
             raise SystemExit(f"no rows for {family} -- the floor tag did not resolve")
         sfx = "" if family == "wind_balance" else f"_{family}"
         out = os.path.join(a.outdir, f"harness_damage_removed{sfx}.csv")
         rps._write(out, rps.REMOVED_FIELDS, rows)
 
-        print(f"\n=== {axis} ({family}) removed vs {FLOOR_TAG} @ {a.lead}h, block=2 ===")
-        print(f"{'config':30}{'removed %':>11}{'95% CI':>22}  sig")
+        print(f"\n=== {axis} ({family}) removed vs {FLOOR_TAG} @ {a.lead}h ===")
+        print(f"{'config':30}{'removed %':>11}")
         for r in rows:
-            if r["block"] == 2:
-                print(f"  {r['tag']:28}{r['removed_pct']:11.1f}  "
-                      f"[{r['ci_lo']:8.1f},{r['ci_hi']:9.1f}]  "
-                      f"{'YES' if r['significant'] else '--'}")
+            print(f"  {r['tag']:28}{r['removed_pct']:11.1f}")
 
 
 if __name__ == "__main__":

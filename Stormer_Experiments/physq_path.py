@@ -12,3 +12,8 @@ if not os.path.isdir(CORE):
         f"or place Aurora_Experiments/ as a sibling checkout next to Stormer/.")
 if CORE not in sys.path:
     sys.path.insert(0, CORE)
+
+_CORE_PARENT = os.path.abspath(os.path.join(CORE, os.pardir))
+if os.path.isfile(os.path.join(_CORE_PARENT, "run_label_spread.py")) \
+        and _CORE_PARENT not in sys.path:
+    sys.path.append(_CORE_PARENT)

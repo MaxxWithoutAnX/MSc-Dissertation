@@ -1,0 +1,7 @@
+pair,endpoint,lead,physics,rmse,ratio,physics_argmax,rmse_argmax
+W8A8_span1|W8A8_rmse_span1,"max(balance,conservation)",120,0.07439225281282379,0.25531768649189485,3.4320467096794656,balance,balance
+W8A8_span2|W8A8_rmse_span2,"max(balance,conservation)",120,0.054600489585739355,0.19978735934069639,3.659076335331564,balance,balance
+W8A8_span3|W8A8_rmse_span3,"max(balance,conservation)",120,0.008477218677740006,0.01715899587830372,2.024130381744292,balance,balance
+W4W8_span1|W4W8_rmse_span1,"max(balance,conservation)",120,0.3000238128226823,0.9124280971820892,3.0411855932293785,balance,balance
+W4W8_span2|W4W8_rmse_span2,"max(balance,conservation)",120,0.10758001303411847,0.05974677117375782,0.5553705515429658,balance,balance
+W4W8_span3|W4W8_rmse_span3,"max(balance,conservation)",120,0.009779479517523589,0.016004892572472524,1.6365791802921397,balance,balance
