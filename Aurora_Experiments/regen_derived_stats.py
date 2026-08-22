@@ -10,22 +10,35 @@ import torch
 
 DEFAULT_RESULTS = "harness_results_n48"
 
+ANTICONTROL_PAIRS = ("W8A8_knee|W8A8_rmseup_knee,"
+                     "W8A8_span1|W8A8_rmseup_span1,"
+                     "W4W8_span1|W4W8_rmseup_span1")
+
 STAGES = [
     ("paired", "run_paired_stats",
      lambda pt, out: ["--pt", pt, "--outdir", out, "--family", "wind_balance"]),
     ("paired_dry", "run_paired_stats",
      lambda pt, out: ["--pt", pt, "--outdir", out, "--family", "dry_air_mass"]),
+    ("label_spread", "run_label_spread",
+     lambda pt, out: ["--pt", pt, "--outdir", out, "--family", "wind_balance"]),
     ("composite", "run_composite_stats",
      lambda pt, out: ["--pt", pt, "--outdir", out]),
     ("anticontrols", "run_anticontrols",
      lambda pt, out: ["--pt", pt, "--outdir", out]),
     ("anticontrols_composite", "run_composite_stats",
      lambda pt, out: ["--pt", pt, "--outdir", out,
-                      "--pairs", "W8A8_knee|W8A8_rmseup_knee,"
-                                 "W8A8_span1|W8A8_rmseup_span1,"
-                                 "W4W8_span1|W4W8_rmseup_span1",
+                      "--pairs", ANTICONTROL_PAIRS,
                       "--out", os.path.join(
-                          out, "harness_results_anticontrol_composite.csv")]),
+                          out, "harness_results_anticontrol_composite.csv"),
+                      "--labels-out", os.path.join(
+                          out, "harness_results_anticontrol_composite_labels.csv")]),
+    ("anticontrol_labels", "run_label_spread",
+     lambda pt, out: ["--pt", pt, "--outdir", out, "--family", "wind_balance",
+                      "--pairs", ANTICONTROL_PAIRS,
+                      "--out", os.path.join(
+                          out, "harness_results_anticontrol_labels.csv")]),
+    ("per_variable", "run_per_variable_rho",
+     lambda pt, out: ["--results", out]),
     ("lead_robustness", "run_aurora_lead_robustness",
      lambda pt, out: ["--pt", pt, "--outdir", out]),
     ("axis_variants", "rescore_axes",

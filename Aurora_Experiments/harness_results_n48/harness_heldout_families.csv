@@ -1,4 +1,4 @@
-# pair=W8A8_span1|W8A8_rmse_span1 lead=120. tier=held_out is the primary evidence; tier=partial and tier=objective are robustness/descriptive.
+# pair=W8A8_span1|W8A8_rmse_span1 lead=120. tier=held_out is the primary evidence; tier=variant, tier=partial and tier=objective are robustness/descriptive.
 tier,family,pair,lead,physics,rmse,ratio
 held_out,spec_div,W8A8_span1|W8A8_rmse_span1,120,0.4799329292530228,0.16056854212315855,0.3345645450356379
 held_out,spec_res,W8A8_span1|W8A8_rmse_span1,120,0.19629451823374935,0.5042809871473791,2.5690018839287023

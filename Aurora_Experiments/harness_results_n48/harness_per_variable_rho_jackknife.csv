@@ -1,4 +1,4 @@
-# leave-one-CONFIG-out Spearman rho, lead=120, n_configs=16, balance_source=harness_results.csv. INFLUENCE, not sampling uncertainty: the config set varies and the dates are held fixed, which is the opposite of the bootstrap CI in the per_variable_rmse_fdr file.
+# leave-one-CONFIG-out Spearman rho, lead=120, n_configs=16, balance_source=harness_results.csv. INFLUENCE, not sampling uncertainty: the config set varies and the dates are held fixed -- this is unrelated to sampling uncertainty, which is not estimated anywhere in this driver any more.
 var,lead,dropped,rho
 Z500,120,W8A8_floor,0.24285714285714285
 Z500,120,W8A8_knee,0.2857142857142857

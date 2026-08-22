@@ -1,0 +1,6 @@
+# pair=W8A8_span1|W8A8_rmse_span1 | POST-HOC trend: log-log slope -0.020
+pair,endpoint,lead,physics,rmse,ratio,physics_argmax,rmse_argmax
+W8A8_span1|W8A8_rmse_span1,"max(balance,conservation)",24,0.3719618055555556,2.9985588710872837,8.061469823786583,conservation,balance
+W8A8_span1|W8A8_rmse_span1,"max(balance,conservation)",72,0.30120986106897973,2.767110145604235,9.186651910345466,balance,balance
+W8A8_span1|W8A8_rmse_span1,"max(balance,conservation)",120,0.4309074125614886,3.3719842890831813,7.825310474560504,balance,balance
+W8A8_span1|W8A8_rmse_span1,"max(balance,conservation)",168,0.4227033393624781,3.3157879430212205,7.844243549204266,balance,balance

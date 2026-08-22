@@ -1,7 +1,6 @@
 # rmse_compression.py
 import numpy as np
 
-from paired_stats import boot_indices
 
 HEADLINE = {"Z500": "geopotential_500", "T850": "temperature_850",
             "T2M": "2m_temperature", "MSLP": "mean_sea_level_pressure",
@@ -42,15 +41,8 @@ def rmse_degradation(pt, tag, lead, variables=None):
     return 100.0 * float(np.mean(_per_init_fracs(pt, tag, lead, v)))
 
 
-def rmse_difference_ci(pt, tag_a, tag_b, lead, variables=None,
-                       block=2, n_boot=4000, seed=0):
+def rmse_difference(pt, tag_a, tag_b, lead, variables=None):
     v = variables if variables is not None else headline_keys(lead)
     a = _per_init_fracs(pt, tag_a, lead, v)
     b = _per_init_fracs(pt, tag_b, lead, v)
-    d = a - b
-    idx = boot_indices(len(d), block=block, n_boot=n_boot, seed=seed)
-    draws = 100.0 * np.mean(d[idx], axis=1)
-    lo, hi = np.percentile(draws, [2.5, 97.5])
-    return {"diff": 100.0 * float(np.mean(d)),
-            "ci_lo": float(lo), "ci_hi": float(hi),
-            "excludes_zero": bool(lo > 0 or hi < 0)}
+    return {"diff": 100.0 * float(np.mean(a - b))}

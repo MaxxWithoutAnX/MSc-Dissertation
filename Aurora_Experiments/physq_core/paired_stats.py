@@ -26,38 +26,30 @@ def family_deltas(fp32_run, config_run, specs, lead, dates=None,
     return deltas, denoms
 
 
-_AGGREGATORS = {"mean": np.mean, "median": np.median}
-
-
-def axis_value(deltas, denoms, idx, agg="mean"):
-    try:
-        fn = _AGGREGATORS[agg]
-    except KeyError:
-        raise ValueError(f"unknown aggregator {agg!r}; expected one of "
-                         f"{sorted(_AGGREGATORS)}") from None
+def axis_value(deltas, denoms, idx):
     vals = [abs(float(deltas[l][idx].mean())) / denoms[l]
             for l in deltas if denoms.get(l, 0.0) > 0]
-    return float(fn(vals)) if vals else float("nan")
+    return float(np.mean(vals)) if vals else float("nan")
 
 
-def boot_indices(n_dates, block=2, n_boot=4000, seed=0):
-    block = max(1, min(block, n_dates))
-    rng = np.random.default_rng(seed)
-    n_blocks = int(np.ceil(n_dates / block))
-    starts = rng.integers(0, n_dates - block + 1, size=(n_boot, n_blocks))
-    return (starts[..., None] + np.arange(block)).reshape(n_boot, -1)[:, :n_dates]
+def label_values(deltas, denoms):
+    return {l: abs(float(deltas[l].mean())) / denoms[l]
+            for l in deltas if denoms.get(l, 0.0) > 0}
 
 
-def paired_ratio(deltas_a, deltas_b, denoms, idx_matrix):
+def label_ratios(deltas_a, deltas_b, denoms):
+    va, vb = label_values(deltas_a, denoms), label_values(deltas_b, denoms)
+    return {l: vb[l] / max(va[l], 1e-12) for l in va if l in vb}
+
+
+def label_contributions(deltas_b, denoms_b, axis_a):
+    if not np.isfinite(axis_a) or axis_a <= 0:
+        return {}
+    return {l: v / axis_a for l, v in label_values(deltas_b, denoms_b).items()}
+
+
+def paired_ratio(deltas_a, deltas_b, denoms):
     full = np.arange(next(iter(deltas_a.values())).shape[0])
     pa, pb = axis_value(deltas_a, denoms, full), axis_value(deltas_b, denoms, full)
-    ratios = np.array([axis_value(deltas_b, denoms, i)
-                       / max(axis_value(deltas_a, denoms, i), 1e-12)
-                       for i in idx_matrix])
-    lo, hi = np.percentile(ratios, [2.5, 97.5])
-    n_boot = len(ratios)
-    p = 2.0 * min(float((ratios <= 1.0).mean()), float((ratios >= 1.0).mean()))
     return {"point_a": pa, "point_b": pb,
-            "ratio": (pb / pa if pa > 0 else float("nan")),
-            "ci_lo": float(lo), "ci_hi": float(hi),
-            "p_value": max(min(p, 1.0), 1.0 / n_boot)}
+            "ratio": (pb / pa if pa > 0 else float("nan"))}

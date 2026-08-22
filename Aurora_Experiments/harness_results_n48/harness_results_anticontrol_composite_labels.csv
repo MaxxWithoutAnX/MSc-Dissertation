@@ -1,0 +1,14 @@
+pair,endpoint,lead,binding_axis,family,label,distortion,physics_axis,contribution
+W8A8_knee|W8A8_rmseup_knee,"max(balance,conservation)",120,balance,wind_balance,Vag/Vg 850hPa,1.9270791262529183,3.7326164968175726,0.5162810398271415
+W8A8_knee|W8A8_rmseup_knee,"max(balance,conservation)",120,balance,wind_balance,|Vag| 850hPa,2.596029431139014,3.7326164968175726,0.6954985687258222
+W8A8_knee|W8A8_rmseup_knee,"max(balance,conservation)",120,balance,wind_balance,Vag/Vg 500hPa,5.710828560595626,3.7326164968175726,1.5299799927114603
+W8A8_knee|W8A8_rmseup_knee,"max(balance,conservation)",120,balance,wind_balance,|Vag| 500hPa,5.145488509789026,3.7326164968175726,1.3785205402633964
+W8A8_knee|W8A8_rmseup_knee,"max(balance,conservation)",120,balance,wind_balance,Vag/Vg 250hPa,2.336098894414438,3.7326164968175726,0.6258609467129009
+W8A8_knee|W8A8_rmseup_knee,"max(balance,conservation)",120,balance,wind_balance,|Vag| 250hPa,3.01478845913967,3.7326164968175726,0.807687706923569
+W8A8_span1|W8A8_rmseup_span1,"max(balance,conservation)",120,balance,wind_balance,Vag/Vg 850hPa,1.6704650066650466,0.4309074125614886,3.8766216546035364
+W8A8_span1|W8A8_rmseup_span1,"max(balance,conservation)",120,balance,wind_balance,|Vag| 850hPa,2.5272079371473595,0.4309074125614886,5.864851389129301
+W8A8_span1|W8A8_rmseup_span1,"max(balance,conservation)",120,balance,wind_balance,Vag/Vg 500hPa,5.169259520914391,0.4309074125614886,11.99621860804439
+W8A8_span1|W8A8_rmseup_span1,"max(balance,conservation)",120,balance,wind_balance,|Vag| 500hPa,4.735843121979813,0.4309074125614886,10.990396043150055
+W8A8_span1|W8A8_rmseup_span1,"max(balance,conservation)",120,balance,wind_balance,Vag/Vg 250hPa,2.105385439328724,0.4309074125614886,4.8859346067255105
+W8A8_span1|W8A8_rmseup_span1,"max(balance,conservation)",120,balance,wind_balance,|Vag| 250hPa,2.692191988310346,0.4309074125614886,6.247727260728386
+W4W8_span1|W4W8_rmseup_span1,"max(balance,conservation)",120,conservation,dry_air_mass,|DryAir Md err|,1.9878787878787878,0.6252525252525253,3.179321486268174

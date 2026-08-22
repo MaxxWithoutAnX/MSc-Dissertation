@@ -11,3 +11,7 @@ if not os.path.isdir(CORE):
         f"or leave it unset to use {_DEFAULT}.")
 if CORE not in sys.path:
     sys.path.insert(0, CORE)
+
+_SCRIPTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "scripts")
+if _SCRIPTS not in sys.path:
+    sys.path.insert(0, _SCRIPTS)

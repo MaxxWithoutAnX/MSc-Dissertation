@@ -9,12 +9,10 @@ import torch
 
 import rmse_compression as rc
 
-FIELDS = ["tag_a", "tag_b", "lead", "block", "diff_pp", "ci_lo", "ci_hi", "excludes_zero",
-          "deg_a_pct", "deg_b_pct"]
+FIELDS = ["tag_a", "tag_b", "lead", "diff_pp", "deg_a_pct", "deg_b_pct"]
 
 PAIR = ("W8A8_floor", "W8A8_span1")
 LEADS = (24, 72, 120, 168)
-BLOCKS = (1, 2, 3)
 
 
 def main(argv=None):
@@ -24,7 +22,6 @@ def main(argv=None):
     ap.add_argument("--outdir", default="harness_results_n48")
     ap.add_argument("--tag-a", default=PAIR[0], dest="tag_a")
     ap.add_argument("--tag-b", default=PAIR[1], dest="tag_b")
-    ap.add_argument("--n-boot", type=int, default=4000, dest="n_boot")
     a = ap.parse_args(argv)
 
     pt = torch.load(a.pt, map_location="cpu", mmap=True, weights_only=False)
@@ -39,14 +36,10 @@ def main(argv=None):
     for lead in LEADS:
         deg_a = rc.rmse_degradation(pt, a.tag_a, lead)
         deg_b = rc.rmse_degradation(pt, a.tag_b, lead)
-        for block in BLOCKS:
-            r = rc.rmse_difference_ci(pt, a.tag_a, a.tag_b, lead,
-                                      block=block, n_boot=a.n_boot)
-            rows.append({"tag_a": a.tag_a, "tag_b": a.tag_b, "lead": lead, "block": block,
-                         "diff_pp": f"{r['diff']:.4f}",
-                         "ci_lo": f"{r['ci_lo']:.4f}", "ci_hi": f"{r['ci_hi']:.4f}",
-                         "excludes_zero": r["excludes_zero"],
-                         "deg_a_pct": f"{deg_a:.4f}", "deg_b_pct": f"{deg_b:.4f}"})
+        r = rc.rmse_difference(pt, a.tag_a, a.tag_b, lead)
+        rows.append({"tag_a": a.tag_a, "tag_b": a.tag_b, "lead": lead,
+                     "diff_pp": f"{r['diff']:.4f}",
+                     "deg_a_pct": f"{deg_a:.4f}", "deg_b_pct": f"{deg_b:.4f}"})
 
     out = os.path.join(a.outdir, "harness_rmse_crossing.csv")
     with open(out, "w", newline="") as f:
@@ -58,18 +51,11 @@ def main(argv=None):
         w.writerows(rows)
     print(f"wrote {out} ({len(rows)} rows)")
 
-    print(f"\n=== {a.tag_a} - {a.tag_b} RMSE gap (block=2) ===")
-    print(f"{'lead':>6}{'diff pp':>11}{'95% CI':>22}  excl 0   sign robust across blocks")
-    for lead in LEADS:
-        at = [r for r in rows if r["lead"] == lead]
-        b2 = next(r for r in at if r["block"] == 2)
-        signs = {float(r["diff_pp"]) > 0 for r in at}
-        excl = {r["excludes_zero"] for r in at}
-        print(f"{lead:>6}{float(b2['diff_pp']):>11.2f}"
-              f"  [{float(b2['ci_lo']):>7.2f},{float(b2['ci_hi']):>8.2f}]"
-              f"   {'YES' if b2['excludes_zero'] else '--':<6}"
-              f"   {'yes' if len(signs) == 1 else 'NO -- SIGN FLIPS'}"
-              f"{'' if excl == {True} else '  (not all blocks exclude 0)'}")
+    print(f"\n=== {a.tag_a} - {a.tag_b} RMSE gap ===")
+    print(f"{'lead':>6}{'diff pp':>11}{'deg a %':>11}{'deg b %':>11}")
+    for r in rows:
+        print(f"{r['lead']:>6}{float(r['diff_pp']):>11.2f}"
+              f"{float(r['deg_a_pct']):>11.2f}{float(r['deg_b_pct']):>11.2f}")
     return rows
 
 
