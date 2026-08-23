@@ -1,0 +1,18 @@
+pair,endpoint,lead,binding_axis,family,label,distortion,physics_axis,contribution
+W8A8_knee|W8A8_rmse_knee,"max(balance,conservation)",120,balance,wind_balance,Vag/Vg 850hPa,3.209671461081284,3.7326164968175726,0.8598985360049307
+W8A8_knee|W8A8_rmse_knee,"max(balance,conservation)",120,balance,wind_balance,|Vag| 850hPa,4.254978673730242,3.7326164968175726,1.1399453111130047
+W8A8_knee|W8A8_rmse_knee,"max(balance,conservation)",120,balance,wind_balance,Vag/Vg 500hPa,10.494416810206722,3.7326164968175726,2.811544346748255
+W8A8_knee|W8A8_rmse_knee,"max(balance,conservation)",120,balance,wind_balance,|Vag| 500hPa,9.697267920289182,3.7326164968175726,2.597981316472525
+W8A8_knee|W8A8_rmse_knee,"max(balance,conservation)",120,balance,wind_balance,Vag/Vg 250hPa,4.3998285924394445,3.7326164968175726,1.178751847716136
+W8A8_knee|W8A8_rmse_knee,"max(balance,conservation)",120,balance,wind_balance,|Vag| 250hPa,5.740132065469189,3.7326164968175726,1.5378306532061956
+W8A8_span1|W8A8_rmse_span1,"max(balance,conservation)",120,balance,wind_balance,Vag/Vg 850hPa,1.8196732654308714,0.4309074125614886,4.222886894922495
+W8A8_span1|W8A8_rmse_span1,"max(balance,conservation)",120,balance,wind_balance,|Vag| 850hPa,2.7472630864882532,0.4309074125614886,6.375529885079966
+W8A8_span1|W8A8_rmse_span1,"max(balance,conservation)",120,balance,wind_balance,Vag/Vg 500hPa,5.501909095083007,0.4309074125614886,12.768193200431213
+W8A8_span1|W8A8_rmse_span1,"max(balance,conservation)",120,balance,wind_balance,|Vag| 500hPa,5.029895163202321,0.4309074125614886,11.672797952819103
+W8A8_span1|W8A8_rmse_span1,"max(balance,conservation)",120,balance,wind_balance,Vag/Vg 250hPa,2.2543652517047303,0.4309074125614886,5.231669695129791
+W8A8_span1|W8A8_rmse_span1,"max(balance,conservation)",120,balance,wind_balance,|Vag| 250hPa,2.8787998725899,0.4309074125614886,6.680785218980441
+W8A8_span2|W8A8_rmse_span2,"max(balance,conservation)",120,conservation,dry_air_mass,|DryAir Md err|,0.13703703703703704,0.04830671782347017,2.836811176818488
+W8A8_span3|W8A8_rmse_span3,"max(balance,conservation)",120,conservation,dry_air_mass,|DryAir Md err|,0.12643097643097645,0.022308311803800825,5.66743810750554
+W4W8_span1|W4W8_rmse_span1,"max(balance,conservation)",120,conservation,dry_air_mass,|DryAir Md err|,1.9545454545454546,0.6252525252525253,3.126009693053312
+W4W8_span2|W4W8_rmse_span2,"max(balance,conservation)",120,conservation,dry_air_mass,|DryAir Md err|,1.9814814814814816,0.11849703519700218,16.72178108243176
+W4W8_span3|W4W8_rmse_span3,"max(balance,conservation)",120,conservation,dry_air_mass,|DryAir Md err|,0.07441077441077441,0.0531986531986532,1.39873417721519

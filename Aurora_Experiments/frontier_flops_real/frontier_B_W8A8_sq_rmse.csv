@@ -1,0 +1,15 @@
+cost,balance,conservation,protected,config
+0,10.7211,5.3425,,
+2.57055e-06,10.7117,5.25883,film,bf16:film
+0.000720933,10.392,5.19609,film|cond_embed,bf16:cond_embed|film
+0.00226908,6.3537,5.11334,decoder_heads|film|cond_embed,bf16:cond_embed|decoder_heads|film
+0.151609,1.04745,1.1758,encoder_io|downsample|decoder_io|decoder_heads|film|cond_embed,bf16:cond_embed|decoder_heads|decoder_io|downsample|encoder_io|film
+0.160225,0.678529,1.00303,encoder_io|downsample|upsample|decoder_io|decoder_heads|film|cond_embed,bf16:cond_embed|decoder_heads|decoder_io|downsample|encoder_io|film|upsample
+0.252126,0.422483,0.771138,encoder_io|downsample|dec0_mlp|upsample|decoder_io|decoder_heads|film|cond_embed,bf16:cond_embed|dec0_mlp|decoder_heads|decoder_io|downsample|encoder_io|film|upsample
+0.286589,0.412038,0.743857,encoder_io|enc0_attn|downsample|dec0_mlp|upsample|decoder_io|decoder_heads|film|cond_embed,bf16:cond_embed|dec0_mlp|decoder_heads|decoder_io|downsample|enc0_attn|encoder_io|film|upsample
+0.378491,0.350585,0.720214,encoder_io|enc0_attn|enc2_mlp|downsample|dec0_mlp|upsample|decoder_io|decoder_heads|film|cond_embed,bf16:cond_embed|dec0_mlp|decoder_heads|decoder_io|downsample|enc0_attn|enc2_mlp|encoder_io|film|upsample
+0.516343,0.0776771,0.249165,encoder_io|enc0_attn|enc0_mlp|enc2_mlp|downsample|dec0_mlp|dec2_mlp|upsample|decoder_io|decoder_heads|film|cond_embed,bf16:cond_embed|dec0_mlp|dec2_mlp|decoder_heads|decoder_io|downsample|enc0_attn|enc0_mlp|enc2_mlp|encoder_io|film|upsample
+0.608244,0.0623111,0.22734,encoder_io|enc0_attn|enc0_mlp|enc2_mlp|downsample|dec0_mlp|dec1_attn|dec2_attn|dec2_mlp|upsample|decoder_io|decoder_heads|film|cond_embed,bf16:cond_embed|dec0_mlp|dec1_attn|dec2_attn|dec2_mlp|decoder_heads|decoder_io|downsample|enc0_attn|enc0_mlp|enc2_mlp|encoder_io|film|upsample
+0.723121,0.0441039,0.148226,encoder_io|enc0_attn|enc0_mlp|enc1_mlp|enc2_mlp|downsample|dec0_mlp|dec1_attn|dec2_attn|dec2_mlp|upsample|decoder_io|decoder_heads|film|cond_embed,bf16:cond_embed|dec0_mlp|dec1_attn|dec2_attn|dec2_mlp|decoder_heads|decoder_io|downsample|enc0_attn|enc0_mlp|enc1_mlp|enc2_mlp|encoder_io|film|upsample
+0.895437,0.00684071,0.0181872,encoder_io|enc0_attn|enc0_mlp|enc1_attn|enc1_mlp|enc2_mlp|downsample|dec0_mlp|dec1_attn|dec1_mlp|dec2_attn|dec2_mlp|upsample|decoder_io|decoder_heads|film|cond_embed,bf16:cond_embed|dec0_mlp|dec1_attn|dec1_mlp|dec2_attn|dec2_mlp|decoder_heads|decoder_io|downsample|enc0_attn|enc0_mlp|enc1_attn|enc1_mlp|enc2_mlp|encoder_io|film|upsample
+1,0,0,encoder_io|enc0_attn|enc0_mlp|enc1_attn|enc1_mlp|enc2_attn|enc2_mlp|downsample|dec0_attn|dec0_mlp|dec1_attn|dec1_mlp|dec2_attn|dec2_mlp|upsample|decoder_io|decoder_heads|film|cond_embed,bf16:cond_embed|dec0_attn|dec0_mlp|dec1_attn|dec1_mlp|dec2_attn|dec2_mlp|decoder_heads|decoder_io|downsample|enc0_attn|enc0_mlp|enc1_attn|enc1_mlp|enc2_attn|enc2_mlp|encoder_io|film|upsample

@@ -1,0 +1,4 @@
+pair,endpoint,lead,physics,rmse,ratio,physics_argmax,rmse_argmax
+W8A8_knee|W8A8_rmseup_knee,"max(balance,conservation)",120,3.7326164968175726,3.455052163555115,0.9256381325273816,balance,balance
+W8A8_span1|W8A8_rmseup_span1,"max(balance,conservation)",120,0.4309074125614886,3.15005883572428,7.310291593730197,balance,balance
+W4W8_span1|W4W8_rmseup_span1,"max(balance,conservation)",120,0.6252525252525253,1.9878787878787878,3.179321486268174,conservation,conservation

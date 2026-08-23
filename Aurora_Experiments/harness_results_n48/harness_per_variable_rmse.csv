@@ -1,0 +1,11 @@
+# family=per_variable_rmse lead=120 n_configs=16 balance_source=harness_results.csv balance_gated=NO
+var,family,lead,rho
+Z500,per_variable_rmse,120,0.2823529411764706
+T850,per_variable_rmse,120,0.2823529411764706
+T2M,per_variable_rmse,120,0.11176470588235295
+MSLP,per_variable_rmse,120,0.3029411764705882
+Q700,per_variable_rmse,120,0.7529411764705882
+U500,per_variable_rmse,120,0.5117647058823529
+V500,per_variable_rmse,120,0.35294117647058826
+U10,per_variable_rmse,120,0.34411764705882353
+V10,per_variable_rmse,120,0.2235294117647059

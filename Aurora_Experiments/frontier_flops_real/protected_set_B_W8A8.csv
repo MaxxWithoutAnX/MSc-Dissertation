@@ -1,0 +1,7 @@
+variant,protected_order
+representative|wind,film|decoder_heads|cond_embed|downsample|encoder_io|enc0_attn|upsample|enc1_attn|decoder_io|enc0_mlp|dec2_attn|dec2_mlp|dec0_mlp|dec1_attn|dec1_mlp|enc1_mlp|dec0_attn|enc2_attn|enc2_mlp
+mean|wind,film|decoder_heads|cond_embed|downsample|decoder_io|encoder_io|upsample|enc0_attn|enc1_attn|enc0_mlp|dec2_attn|dec0_mlp|dec1_attn|enc1_mlp|dec2_mlp|dec0_attn|enc2_attn|dec1_mlp|enc2_mlp
+mean|wind+hyps,film|decoder_heads|cond_embed|decoder_io|downsample|encoder_io|upsample|enc0_attn|enc1_attn|enc0_mlp|dec2_attn|dec1_attn|enc1_mlp|dec2_mlp|dec0_mlp|dec0_attn|dec1_mlp|enc2_attn|enc2_mlp
+mean|wind+lapse,film|decoder_heads|cond_embed|downsample|encoder_io|upsample|decoder_io|enc0_attn|enc1_attn|enc0_mlp|dec2_attn|enc1_mlp|dec2_mlp|dec0_attn|dec0_mlp|dec1_attn|dec1_mlp|enc2_attn|enc2_mlp
+mean|wind+both,film|decoder_heads|cond_embed|decoder_io|downsample|encoder_io|upsample|enc0_attn|enc1_attn|enc0_mlp|dec2_attn|enc1_mlp|dec2_mlp|dec0_attn|dec1_attn|dec0_mlp|dec1_mlp|enc2_attn|enc2_mlp
+first_pc|wind+both,film|decoder_heads|cond_embed|decoder_io|downsample|encoder_io|upsample|enc0_attn|enc1_attn|enc0_mlp|dec2_attn|enc1_mlp|dec2_mlp|dec0_mlp|dec0_attn|dec1_attn|dec1_mlp|enc2_attn|enc2_mlp

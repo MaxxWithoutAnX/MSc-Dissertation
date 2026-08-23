@@ -1,0 +1,37 @@
+# ---------------- Not published ----------------
+tests/
+docs/
+
+# ---------------- OS ----------------
+.DS_Store
+
+# ---------------- Python ----------------
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.pytest_cache/
+.venv/
+
+# ---------------- Large binaries: NEVER commit ----------------
+data/
+results_*/
+ablations_W*/
+ablation_W*_sampled/
+noise_floor_ens/
+all_metrics*.pt
+harness_results*/*.pt
+*.ckpt
+*.nc
+*.pdf
+
+# ---------------- Regenerable output ----------------
+figures_check/
+
+# Working notes, not published
+tables
+scripts
+_verify_rho.py
+noise_floor_ens_n48

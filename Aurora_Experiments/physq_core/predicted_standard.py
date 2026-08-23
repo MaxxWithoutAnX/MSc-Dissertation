@@ -1,0 +1,110 @@
+"""Predicted RMSE (standard) distortion per manifest tag, for figA09's third panel."""
+# predicted_standard.py
+import argparse
+import csv
+import os
+import sys
+
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
+
+from allocator import load_distortion_table
+from frontiers import _axis_sum
+from select_harness_configs import decode_config
+
+AXIS = "standard"
+LEAD = 120
+
+AURORA_SCHEME_CSVS = {
+    "W8A8": {"W8A8": "ablation_analysis_ablations_W8A8/sensitivity.csv"},
+    "W8A8_sq": {"W8A8_sq": "ablation_analysis_ablations_W8A8_sq/sensitivity.csv"},
+    "W4": {"W4": "ablation_analysis_ablations_W4/sensitivity.csv",
+           "W8": "ablation_analysis_ablations_W8/sensitivity.csv"},
+}
+# 0.01, the practical-equivalence gate regen_all_frontiers.py selected the manifest under.
+AURORA_MIN_EFFECT_FRAC = 0.01
+
+STORMER_SCHEME_CSVS = {
+    "W8A8": {"W8A8": "ablation_analysis_ablation_W8A8/sensitivity.csv"},
+    "W8A8_sq": {"W8A8_sq": "ablation_analysis_ablations_W8A8_sq/sensitivity.csv"},
+    "W4": {"W4": "ablation_analysis_ablation_W4/sensitivity.csv",
+           "W8": "ablation_analysis_ablation_W8/sensitivity.csv"},
+}
+# UNGATED: no Stormer noise-floor ensemble exists, so its frontiers were built at 0.0.
+STORMER_MIN_EFFECT_FRAC = 0.0
+
+MODELS = {
+    "aurora": (AURORA_SCHEME_CSVS, AURORA_MIN_EFFECT_FRAC,
+               "harness_configs_corrected.csv", "harness_configs_standard.csv"),
+    "stormer": (STORMER_SCHEME_CSVS, STORMER_MIN_EFFECT_FRAC,
+                "stormer_harness_configs.csv", "stormer_harness_configs_standard.csv"),
+}
+
+UNQUANTISED_FLOOR = "bf16"
+
+FIELDS = ["tag", "lead", AXIS]
+
+
+def predict_standard(manifest_rows, scheme_csvs_by_floor, lead=LEAD, min_effect_frac=0.0):
+    tables = {}
+    for floor, csvs in scheme_csvs_by_floor.items():
+        tables[floor] = load_distortion_table(csvs, lead=lead, axes=(AXIS,),
+                                              min_effect_frac=min_effect_frac)
+    out = []
+    for row in manifest_rows:
+        floor = row.get("floor", "")
+        if floor == UNQUANTISED_FLOOR:
+            out.append({"tag": row["tag"], "lead": lead, AXIS: 0.0})
+            continue
+        d = tables.get(floor)
+        if d is None:
+            continue
+        config = decode_config(row.get("config") or "", floor, list(d))
+        out.append({"tag": row["tag"], "lead": lead,
+                    AXIS: float(_axis_sum(d, config, (AXIS,))[AXIS])})
+    return out
+
+
+def write_csv(rows, path, provenance=""):
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    with open(path, "w", newline="") as f:
+        if provenance:
+            f.write("# " + provenance + "\n")
+        w = csv.DictWriter(f, fieldnames=FIELDS, extrasaction="ignore")
+        w.writeheader()
+        w.writerows(rows)
+    return path
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--model", choices=sorted(MODELS), default="aurora")
+    ap.add_argument("--manifest", default=None, help="override the model's default manifest")
+    ap.add_argument("--lead", type=int, default=LEAD)
+    ap.add_argument("--out", default=None, help="defaults to the model's sidecar name")
+    a = ap.parse_args(argv)
+
+    scheme_csvs, frac, default_manifest, default_out = MODELS[a.model]
+    manifest = a.manifest or default_manifest
+    out_path = a.out or default_out
+    with open(manifest, newline="") as f:
+        rows = [r for r in csv.DictReader(l for l in f if not l.startswith("#"))]
+
+    out = predict_standard(rows, scheme_csvs, lead=a.lead, min_effect_frac=frac)
+    write_csv(out, out_path,
+              provenance=f"predicted RMSE (standard) axis. model={a.model} "
+                         f"manifest={manifest} lead={a.lead} min_effect_frac={frac} "
+                         f"n_manifest={len(rows)} n_predicted={len(out)}")
+    print(f"wrote {out_path} ({len(out)} of {len(rows)} manifest rows, "
+          f"min_effect_frac={frac})", flush=True)
+    skipped = {r["floor"] for r in rows} - set(scheme_csvs) - {UNQUANTISED_FLOOR}
+    if skipped:
+        print(f"  NO TABLE for floor(s) {sorted(skipped)} -- those tags are omitted",
+              flush=True)
+    return out
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,6 @@
+# W8A8_floor minus W8A8_span1 RMSE degradation, percentage points, paired on initialisation date. DESCRIPTIVE: point estimates only, no interval and no test; only the 168h comparison was pre-registered.
+tag_a,tag_b,lead,diff_pp,deg_a_pct,deg_b_pct
+W8A8_floor,W8A8_span1,24,6.4947,8.7714,2.2767
+W8A8_floor,W8A8_span1,72,2.0291,4.0334,2.0042
+W8A8_floor,W8A8_span1,120,-0.7012,1.9594,2.6606
+W8A8_floor,W8A8_span1,168,-1.2077,1.2430,2.4507

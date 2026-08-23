@@ -1,0 +1,8 @@
+variant,top8_protected_order
+representative|wind,film|decoder_heads|cond_embed|downsample|enc0_attn|enc1_attn|upsample|encoder_io
+mean|all,decoder_heads|cond_embed|downsample|decoder_io|encoder_io|upsample|enc0_attn|enc1_attn
+mean|wind,decoder_heads|cond_embed|encoder_io|downsample|decoder_io|upsample|enc0_attn|enc1_attn
+mean|wind+hyps,decoder_heads|cond_embed|decoder_io|downsample|encoder_io|upsample|enc0_attn|enc1_attn
+mean|wind+lapse,decoder_heads|cond_embed|downsample|encoder_io|upsample|decoder_io|enc0_attn|enc1_attn
+mean|wind+both,decoder_heads|cond_embed|decoder_io|downsample|encoder_io|upsample|enc0_attn|enc1_attn
+first_pc|wind+both,decoder_heads|cond_embed|decoder_io|downsample|encoder_io|upsample|enc0_attn|enc1_attn
