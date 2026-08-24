@@ -75,6 +75,31 @@ def read_per_init(path):
     return out
 
 
+def _init_order(d):
+    """Init keys in chronological order -- block resampling assumes time order."""
+    try:
+        return sorted(d, key=int)
+    except (TypeError, ValueError):
+        return sorted(d)
+
+
+def per_init_boot_ci(per_init, tag, leads, n_boot=2000, ci=95):
+    """Moving-block bootstrap CI on the MEAN per-init degradation, one per lead.
+    Same estimator as the plots_*/ RMSE bands (plot_common.block_bootstrap).
+    Based off GraphCast paper reporting RMSE spread."""
+    from plot_common import block_bootstrap
+    out = []
+    for L in leads:
+        d = per_init.get((tag, L)) or {}
+        if len(d) < 4:
+            return None
+        vals = np.asarray([d[k] for k in _init_order(d)], dtype=np.float64)
+        block = max(1, round(len(vals) ** (1.0 / 3.0)))
+        _, lo, hi = block_bootstrap(vals, block=block, n_boot=n_boot, ci=ci)
+        out.append((float(lo), float(hi)))
+    return out
+
+
 def per_init_iqr(per_init, tag, leads):
     out = []
     for L in leads:
@@ -415,8 +440,8 @@ def draw_rmse_compression(leads, series, outdir, name, title, crossing_note=None
                      fontsize=8.5, color="#444", fontweight="bold")
     note_lines = []
     if rmse_bands:
-        note_lines.append("band = IQR across initialisations  (forecast-to-forecast "
-                          "spread, not an interval on the mean)")
+        note_lines.append("band = 95% moving-block bootstrap CI on the mean  "
+                          "(2000 resamples, monthly blocks)")
         a, b = agreement_of
         if agreement and a and b:
             note_lines.append(f"n/N above = initialisations (of {agreement[0][1]}) where "
@@ -1462,7 +1487,8 @@ def prepare_balance_profile(path, series=SPECTRAL_SERIES_WITH_REF):
         out.append({"label": label, "colour": colour, "ls": style_,
                     "levels": np.array([float(r["level"]) for r in sel]),
                     "mean": np.array([float(r["mean"]) for r in sel]),
-                    "sem": np.array([float(r["sem"]) for r in sel])})
+                    "lo": np.array([float(r["lo"]) for r in sel]),
+                    "hi": np.array([float(r["hi"]) for r in sel])})
     return out
 
 
@@ -1475,7 +1501,7 @@ def draw_balance_profile(series, outdir, name, title, caption=""):
     for s in series:
         ax.plot(s["mean"], s["levels"], s["ls"], color=s["colour"], marker="o", ms=5, lw=2,
                 mec="white", mew=0.8, label=s["label"], zorder=5)
-        ax.fill_betweenx(s["levels"], s["mean"] - s["sem"], s["mean"] + s["sem"],
+        ax.fill_betweenx(s["levels"], s["lo"], s["hi"],
                          color=s["colour"], alpha=0.15, zorder=2)
     levels = series[0]["levels"]
     ax.set_yscale("log")
@@ -1484,6 +1510,9 @@ def draw_balance_profile(series, outdir, name, title, caption=""):
     ax.set_yticklabels([f"{int(v)}" for v in levels], fontsize=8)
     ax.set_ylabel("pressure level (hPa)")
     ax.set_xlabel("ageostrophic / geostrophic wind ratio  @120 h")
+    ax.text(0.5, -0.085, "band = 95% moving-block bootstrap CI on the mean  "
+            "(2000 resamples, monthly blocks)", transform=ax.transAxes,
+            ha="center", va="top", fontsize=8.5, color="#444")
     ax.set_title(title, fontsize=11.5, fontweight="bold")
     ax.legend(frameon=False, fontsize=9.5, loc="lower right")
     style(ax)

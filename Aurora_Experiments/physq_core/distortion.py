@@ -14,14 +14,15 @@ class NoiseFloor:
         return cls(None)
 
     @classmethod
-    def from_detailed(cls, path=os.path.join("validation", "noise_floor_detailed.pt")):
+    def from_detailed(cls, path="noise_floor_detailed.pt"):
         if not os.path.exists(path):
             return cls.null()
         return cls(torch.load(path, map_location="cpu", weights_only=False))
 
     def sigma(self, family_key, lead):
         """Conservative (max over floor types) run-to-run floor for a family at a
-        lead; 0.0 when unknown so an unmatched metric is never gated."""
+        lead; 0.0 when unknown so an unmatched metric is never gated. LEGACY: the
+        gate itself now uses sigma_for()."""
         if self._detailed is None:
             return 0.0
         vals = []
@@ -29,6 +30,18 @@ class NoiseFloor:
             fam = ftype.get("per_family", {}).get(family_key, {})
             if lead in fam:
                 vals.append(float(fam[lead]))
+        return max(vals) if vals else 0.0
+
+    def sigma_for(self, spec, lead):
+        """Conservative (max over floor types) per-metric run-to-run floor. 0.0 when
+        that metric has no measured floor, so it is never gated."""
+        if self._detailed is None:
+            return 0.0
+        vals = []
+        for ftype in self._detailed.values():
+            per_metric = ftype.get("per_metric", {}).get(spec.label, {})
+            if lead in per_metric:
+                vals.append(float(per_metric[lead]))
         return max(vals) if vals else 0.0
 
 

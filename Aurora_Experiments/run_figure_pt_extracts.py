@@ -8,6 +8,7 @@ import os
 import numpy as np
 import torch
 
+from plot_common import block_bootstrap
 from rmse_compression import tag_data
 
 LEAD = 120
@@ -78,9 +79,11 @@ def extract_balance_profile(pt, inits, lead=LEAD):
                     f"wbal_ageo_geo_pred_{lev}_{lead}"]) for i in inits])
             except (KeyError, TypeError, ValueError):
                 return []            # partial profiles would plot as silent gaps
+            block = max(1, round(len(s) ** (1.0 / 3.0)))
+            m, lo, hi = block_bootstrap(s, block=block)
             rows.append({"tag": tag, "lead": lead, "level": lev,
-                         "mean": f"{s.mean():.10g}",
-                         "sem": f"{s.std() / np.sqrt(len(s)):.10g}"})
+                         "mean": f"{float(m):.10g}",
+                         "lo": f"{float(lo):.10g}", "hi": f"{float(hi):.10g}"})
     return rows
 
 
@@ -122,7 +125,7 @@ def main(argv=None):
            ["var", "lead", "plain_frac", "grad_frac", "amplification"])
     _write(os.path.join(outdir, "harness_balance_profile.csv"),
            extract_balance_profile(pt, inits, a.lead),
-           ["tag", "lead", "level", "mean", "sem"])
+           ["tag", "lead", "level", "mean", "lo", "hi"])
     return {"psd": len(psd_rows), "amp": len(amp_rows)}
 
 

@@ -27,7 +27,6 @@ all_metrics*.pt
 harness_results*/*.pt
 stormer_*.ckpt
 *.nc
-stormer_noise_floor_ens
 
 # Reference papers (copyright + size)
 *.pdf

@@ -22,7 +22,7 @@ from plot_common import (
     agg_class, CONSISTENCY_CLASSES, AGG_CLASS_ORDER,
 )
 
-from distortion import NoiseFloor, distortion, floor_family_of
+from distortion import NoiseFloor, distortion
 
 EPS = 1e-12
 NC_PATH = os.path.join("data", "era5_sampled_2020_4pm_aurora_0p25.nc")
@@ -222,8 +222,7 @@ def sensitivity_records(fp32_run, oat_runs, specs, groups, leads, dates, block,
     for lead in leads:
         for spec in specs:
             base = spec_series(fp32_run, spec, lead)
-            sigma = noise_floor.sigma(floor_family_of(spec), lead) \
-                if floor_family_of(spec) else 0.0
+            sigma = noise_floor.sigma_for(spec, lead)
             col = []
             for g in groups:
                 val = spec_series(oat_runs[g], spec, lead)
@@ -682,19 +681,22 @@ def plot_collinearity(records, all_labels, groups, lead, out_dir):
 
 
 # --- per-dir driver -----------------------------------------------------------------------------
+SCHEMES = ("W8A8_sq", "W8_g64", "W8A8", "W4", "W8", "FP32")
+
+
 def _scheme_of(cfg_dir):
     m = re.match(r"ablations?_(.+)", os.path.basename(os.path.normpath(cfg_dir)))
     if not m:
         return None
     cand = m.group(1)
-    while cand and not os.path.exists(f"all_metrics_{cand}.pt"):
-        if "_" not in cand:
-            break
-        cand = cand.rsplit("_", 1)[0]
-    return cand
+    for s in SCHEMES:
+        if cand == s or cand.startswith(s + "_"):
+            return s
+    return None
 
 
-def analyse_dir(cfg_dir, leads_arg=None, norm_mode="auto"):
+def analyse_dir(cfg_dir, leads_arg=None, norm_mode="auto",
+                floor_path="noise_floor_detailed.pt"):
     name = os.path.basename(os.path.normpath(cfg_dir))
     out = ensure_dir(f"ablation_analysis_{name}")
     print(f"\n=== {name} -> {out}/ ===", flush=True)
@@ -732,8 +734,11 @@ def analyse_dir(cfg_dir, leads_arg=None, norm_mode="auto"):
         full_run = MetricsRun(scheme, torch.load(f"all_metrics_{scheme}.pt",
                                                  map_location="cpu", weights_only=False))
 
+    noise_floor = NoiseFloor.from_detailed(floor_path)
+    print(f"noise floor: {'NULL (sigma=0, gate off)' if noise_floor.is_null else 'loaded'}"
+          f" <- {floor_path}", flush=True)
     recs = sensitivity_records(fp32_run, oat_runs, specs, groups, leads, dates, block,
-                               full_table, norm_mode, NoiseFloor.null())
+                               full_table, norm_mode, noise_floor)
     add_ranks(recs)
     write_csv(recs, os.path.join(out, "sensitivity.csv"))
     rec_idx = record_index(recs)
@@ -868,6 +873,9 @@ def main(argv=None):
     ap.add_argument("--norm", choices=["auto", "colmax"], default="auto",
                     help="'auto': share-of-full-quant-damage where a full run exists, "
                          "per-column max elsewhere; 'colmax': force per-column max")
+    ap.add_argument("--noise-floor", dest="noise_floor",
+                    default="noise_floor_detailed.pt",
+                    help="per-metric floor artefact; must match the ablations' init count.")
     a = ap.parse_args(argv)
 
     dirs = a.dirs or sorted(d for d in glob.glob("ablation_*")
@@ -877,7 +885,7 @@ def main(argv=None):
         ap.error("no ablation dirs found (looked for ablation_*/oat_results.pt)")
     leads = [int(x) for x in a.leads.split(",")] if a.leads else None
 
-    summaries = [analyse_dir(d, leads, a.norm) for d in dirs]
+    summaries = [analyse_dir(d, leads, a.norm, a.noise_floor) for d in dirs]
     if len(summaries) >= 2:
         cross_scheme(summaries, ensure_dir("ablation_analysis_cross_scheme"))
 

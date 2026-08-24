@@ -632,7 +632,7 @@ def _rmse_compression_figure(r, outdir, name, title):
     bands, agreement, agreement_of = None, None, ("", "")
     if per_init:
         bands = {sp[0]: b for sp, b in
-                 ((sp, fc.per_init_iqr(per_init, sp[1], leads)) for sp in spec) if b}
+                 ((sp, fc.per_init_boot_ci(per_init, sp[1], leads)) for sp in spec) if b}
         agreement = fc.paired_sign_agreement(per_init, spec[0][1], spec[1][1], leads)
         if agreement:
             agreement_of = (spec[0][0], spec[1][0])
