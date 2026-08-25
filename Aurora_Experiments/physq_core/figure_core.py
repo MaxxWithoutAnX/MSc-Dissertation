@@ -1800,7 +1800,8 @@ def draw_per_variable_rho(rows, outdir, name, title, caption=""):
 # ------------------------------------------------- the reproducibility floor
 
 def prepare_reproducibility_floor(floor_csv, scheme_csvs, lead=120,
-                                  axes=("balance", "conservation")):
+                                  axes=("balance", "conservation"),
+                                  value_col="svr"):
     floor = {r["axis"]: r for r in read_csv(floor_csv)}
     if not floor:
         return {}
@@ -1808,7 +1809,8 @@ def prepare_reproducibility_floor(floor_csv, scheme_csvs, lead=120,
     present = {k: v for k, v in scheme_csvs.items() if os.path.exists(v)}
     if not present:
         return {}
-    d = load_distortion_table(present, lead=lead, axes=tuple(axes))
+    d = load_distortion_table(present, lead=lead, axes=tuple(axes),
+                              value_col=value_col)
     out = {"lead": lead, "axes": {}}
     for a in axes:
         if a not in floor:
@@ -1857,7 +1859,7 @@ def draw_reproducibility_floor(data, outdir, name, title):
         ax.set_title(f"{a}   -   {n_below}/{len(info['cells'])} cells below the floor",
                      fontsize=11, fontweight="bold")
         # .4f prints 0.0000 for Stormer's 4.6e-05 floor; .3g keeps both models legible.
-        ax.annotate(f"reproducibility floor p95 = {info['p95']:.3g}", xy=(info["p95"], 0.60),
+        ax.annotate(f"numerical-noise floor p95 = {info['p95']:.3g}", xy=(info["p95"], 0.60),
                     xytext=(4, 0), textcoords="offset points", fontsize=8.5, color="#444")
         style(ax)
         ax.grid(True, axis="x", which="both", ls="-", lw=0.4, color="#ececec")

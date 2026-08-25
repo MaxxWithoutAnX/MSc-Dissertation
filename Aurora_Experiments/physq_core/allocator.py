@@ -83,7 +83,7 @@ from collections import defaultdict
 
 def load_distortion_table(scheme_csvs, lead=120, axes=CONSISTENCY_AXES,
                           reducer=None, families=None, min_effect_frac=0.0,
-                          axis_floor=0.0):
+                          axis_floor=0.0, value_col="distortion"):
     import ablation_comp as ac
     from plot_common import AGG_CLASS
     d = defaultdict(lambda: defaultdict(dict))
@@ -98,7 +98,9 @@ def load_distortion_table(scheme_csvs, lead=120, axes=CONSISTENCY_AXES,
                 axis = AGG_CLASS.get(fam)
                 if axis not in axes:
                     continue
-                acc[row["group"]][axis][fam].append(float(row["distortion"]))
+                acc[row["group"]][axis][fam].append(
+                    abs(float(row["svr"])) if value_col == "svr"
+                    else float(row[value_col]))
         for g, axesd in acc.items():
             groups.add(g)
             for a in axes:

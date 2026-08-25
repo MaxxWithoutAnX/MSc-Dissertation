@@ -1566,13 +1566,13 @@ def _scheme_csvs(root):
 
 
 REPRODUCIBILITY_FLOOR_TITLE = (
-    "Aurora: layer-group effect sizes against the measured reproducibility floor")
+    "Aurora: layer-group effect sizes against the measured numerical-noise floor")
 
 
 def _b_reproducibility_floor(roots, outdir):
     r = roots["aurora"]
     data = fc.prepare_reproducibility_floor(
-        r.path("noise_floor_ens_n48", "axis_null_p95.csv"),
+        r.path("noise_floor_ens_n48", "axis_null_p95_oatbasis.csv"),
         _scheme_csvs(r), lead=120)
     return fc.draw_reproducibility_floor(
         data, outdir, "figA23_reproducibility_floor.png", REPRODUCIBILITY_FLOOR_TITLE)
@@ -1581,19 +1581,19 @@ def _b_reproducibility_floor(roots, outdir):
 REGISTRY.append(
     FigureSpec(id="reproducibility_floor", number=23, section="appendix", model="aurora",
                build=_b_reproducibility_floor,
-               inputs=("noise_floor_ens_n48/axis_null_p95.csv",
+               inputs=("noise_floor_ens_n48/axis_null_p95_oatbasis.csv",
                        "ablation_analysis_ablations_*/sensitivity.csv"),
                title=REPRODUCIBILITY_FLOOR_TITLE))
 
 
 REPRODUCIBILITY_FLOOR_STORMER_TITLE = (
-    "Stormer: layer-group effect sizes against the measured reproducibility floor")
+    "Stormer: layer-group effect sizes against the measured numerical-noise floor")
 
 
 def _b_reproducibility_floor_stormer(roots, outdir):
     r = roots["stormer"]
     data = fc.prepare_reproducibility_floor(
-        r.path("stormer_noise_floor_ens", "axis_null_p95.csv"),
+        r.path("stormer_noise_floor_ens", "axis_null_p95_oatbasis.csv"),
         _scheme_csvs(r), lead=120)
     return fc.draw_reproducibility_floor(
         data, outdir, "figA26_reproducibility_floor_stormer.png",
@@ -1603,7 +1603,7 @@ def _b_reproducibility_floor_stormer(roots, outdir):
 REGISTRY.append(
     FigureSpec(id="reproducibility_floor_stormer", number=26, section="appendix",
                model="stormer", build=_b_reproducibility_floor_stormer,
-               inputs=("stormer_noise_floor_ens/axis_null_p95.csv",
+               inputs=("stormer_noise_floor_ens/axis_null_p95_oatbasis.csv",
                        "ablation_analysis_ablation_*/sensitivity.csv"),
                title=REPRODUCIBILITY_FLOOR_STORMER_TITLE))
 

@@ -10,6 +10,7 @@ import torch
 
 import ablation_comp as ac
 import paired_stats as ps
+import plot_common as pc
 from plot_common import AGG_CLASS, MetricsRun
 
 @contextlib.contextmanager
@@ -20,7 +21,7 @@ def _csv_writer(path):
 
 
 LEAD = 120
-DIR = "noise_floor_ens"
+DIR = "noise_floor_ens_n48"
 AXES = ["balance", "conservation", "standard"]
 
 AURORA_G1 = 0.03066     # film balance @W8 -- the floor must erase this
@@ -28,7 +29,23 @@ AURORA_G2 = 0.09295     # decoder_heads standard @W8 -- the floor must NOT erase
 DEFAULT_FLOOR = 0.05    # the practical-significance floor actually in use
 
 
-def derive(ens_dir, lead=LEAD, verbose=True):
+def oat_denominators(oat_fp32_path, lead=LEAD):
+    """{label: denominator} exactly as sensitivity.csv computed them."""
+    run = MetricsRun("oat", torch.load(oat_fp32_path, map_location="cpu",
+                                       weights_only=False))
+    dates = ac.recover_dates(list(run.dates))
+    method = ac.pick_svr_method(dates)
+    out = {}
+    for sp in ac.available_specs(run, run, ac.metric_registry(run), lead):
+        f = np.asarray(pc.per_init_series(run, sp, lead), dtype=np.float64)
+        d = (float(np.percentile(f, 75) - np.percentile(f, 25)) if method == "iqr_raw"
+             else float(pc.spread(f, dates, method)))
+        if np.isfinite(d) and d > 0:
+            out[sp.label] = d
+    return out, method, len(run.dates)
+
+
+def derive(ens_dir, lead=LEAD, verbose=True, denoms=None):
     inv = collections.defaultdict(list)
     for fam, cls in AGG_CLASS.items():
         inv[cls].append(fam)
@@ -49,14 +66,16 @@ def derive(ens_dir, lead=LEAD, verbose=True):
         for a in AXES:
             fam_vals = {}
             for fam in inv.get(a, []):
-                specs = ps.specs_for_family(ref, mem, fam, lead)
+                specs = [sp for sp in ps.specs_for_family(ref, mem, fam, lead)
+                         if denoms is None or sp.label in denoms]
                 if not specs:
                     continue
-                deltas, denoms = ps.family_deltas(ref, mem, specs, lead)
+                deltas, own = ps.family_deltas(ref, mem, specs, lead)
                 if not deltas:
                     continue
                 idx = np.arange(len(next(iter(deltas.values()))))
-                v = ps.axis_value(deltas, denoms, idx)
+                use = own if denoms is None else {l: denoms[l] for l in deltas}
+                v = ps.axis_value(deltas, use, idx)
                 if np.isfinite(v):
                     fam_vals[fam] = v
             if fam_vals:
@@ -73,15 +92,29 @@ def main(argv=None):
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--ens", default=DIR, help=f"round-off ensemble dir (default {DIR})")
     ap.add_argument("--lead", type=int, default=LEAD)
+    ap.add_argument("--denominators-from", dest="basis", default="ensemble",
+                    choices=("ensemble", "oat"),
+                    help="which spread to divide by; 'oat' puts the null in "
+                         "sensitivity.csv's units for the figA23/figA26 band")
+    ap.add_argument("--oat-fp32", default="ablations_W8A8/fp32_metrics.pt",
+                    help="OAT run's fp32_metrics.pt, source of the --denominators-from oat "
+                         "divisors")
     ap.add_argument("--gates", default="aurora", choices=("aurora", "none"),
                     help="print the comparison against Aurora's W8 gate bounds. Use 'none' "
                          "for any other model -- those constants are Aurora measurements.")
     ap.add_argument("--out", default=None,
                     help="write the per-axis null summary here as CSV "
-                         "(default: <ens>/axis_null_p95.csv)")
+                         "(default: <ens>/axis_null_p95.csv, or "
+                         "axis_null_p95_oatbasis.csv when --denominators-from oat)")
     a = ap.parse_args(argv)
 
-    per_axis, n = derive(a.ens, lead=a.lead)
+    denoms = None
+    if a.basis == "oat":
+        denoms, method, n_oat = oat_denominators(a.oat_fp32, a.lead)
+        print(f"denominators from {a.oat_fp32}: {len(denoms)} labels, method={method}, "
+              f"{n_oat} inits", flush=True)
+
+    per_axis, n = derive(a.ens, lead=a.lead, denoms=denoms)
 
     print(f"\n=== AXIS-LEVEL NULL ({a.ens}, round-off ensemble, "
           f"n={n} perturbed members, {a.lead}h) ===")
@@ -108,7 +141,8 @@ def main(argv=None):
                        else "BELOW G1 bound" if ax == "balance" else "")
             print(f"  {ax:14} p95 = {p95:.5g}   {verdict}")
 
-    out = a.out or os.path.join(a.ens, "axis_null_p95.csv")
+    name = "axis_null_p95_oatbasis.csv" if a.basis == "oat" else "axis_null_p95.csv"
+    out = a.out or os.path.join(a.ens, name)
     with _csv_writer(out) as w:
         w.writerow(["axis", "lead", "n_members", "median", "p90", "p95", "max"])
         for ax in AXES:
