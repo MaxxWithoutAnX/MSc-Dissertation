@@ -440,8 +440,8 @@ def draw_rmse_compression(leads, series, outdir, name, title, crossing_note=None
                      fontsize=8.5, color="#444", fontweight="bold")
     note_lines = []
     if rmse_bands:
-        note_lines.append("band = 95% moving-block bootstrap CI on the mean  "
-                          "(2000 resamples, monthly blocks)")
+        note_lines.append("band = 95% moving-block bootstrap CI on the pooled "
+                          "degradation  (2000 resamples, block = 4 inits ~ 1 month)")
         a, b = agreement_of
         if agreement and a and b:
             note_lines.append(f"n/N above = initialisations (of {agreement[0][1]}) where "
@@ -1331,7 +1331,67 @@ def _harness_cases(pt, tag):
     return tag_data(pt, tag)
 
 
-def prepare_rmse_lead_families(pt, tags, leads, variables, ref="FP32", per_init=False):
+def rc_default_agg():
+    """rmse_compression.DEFAULT_AGG, imported lazily so figure_core keeps no import cycle."""
+    from rmse_compression import DEFAULT_AGG
+    return DEFAULT_AGG
+
+
+def _pooled_fracs_for(pt, tag, lead, variables, ref):
+    from rmse_compression import pooled_fracs
+    return pooled_fracs(pt, tag, lead, [f"w_rmse_{v}_{lead}" for v in variables], ref=ref)
+
+
+def read_per_init_var(path):
+    """{(tag, lead): (inits, vars, R_tag[D,V], R_ref[D,V])} from a *_per_init_var.csv."""
+    acc = {}
+    for r in read_csv(path):
+        try:
+            key = (r["tag"], int(r["lead"]))
+            acc.setdefault(key, {}).setdefault(r["init"], {})[r["var"]] = (
+                float(r["r_cfg"]), float(r["r_ref"]))
+        except (KeyError, TypeError, ValueError):
+            continue
+    out = {}
+    for key, by_init in acc.items():
+        inits = sorted(by_init)
+        varnames = sorted({v for d in by_init.values() for v in d})
+        try:
+            q = np.array([[by_init[i][v][0] for v in varnames] for i in inits])
+            f = np.array([[by_init[i][v][1] for v in varnames] for i in inits])
+        except KeyError:
+            continue                      # ragged (tag, lead): drop rather than mis-pair
+        out[key] = (inits, varnames, q, f)
+    return out
+
+
+def pooled_boot_ci(per_init_var, tag, leads, n_boot=2000, ci=95, rng_seed=0):
+    """[(lo, hi) per lead]: moving-block bootstrap CI on the POOLED degradation."""
+    out = []
+    for L in leads:
+        got = per_init_var.get((tag, L))
+        if got is None:
+            return None
+        _, _, q, f = got
+        D = q.shape[0]
+        if D < 4:
+            return None
+        block = max(1, min(round(D ** (1.0 / 3.0)), D))
+        rng = np.random.default_rng(rng_seed)
+        n_blocks = int(np.ceil(D / block))
+        starts = rng.integers(0, D - block + 1, size=(n_boot, n_blocks))
+        idx = (starts[..., None] + np.arange(block)).reshape(n_boot, -1)[:, :D]
+        qs = np.sqrt((q[idx] ** 2).mean(axis=1))          # [n_boot, V]
+        fs = np.sqrt((f[idx] ** 2).mean(axis=1))
+        vals = 100.0 * (qs / fs - 1.0).mean(axis=1)       # [n_boot]
+        alpha = (100 - ci) / 2
+        lo, hi = np.percentile(vals, [alpha, 100 - alpha])
+        out.append((float(lo), float(hi)))
+    return out
+
+
+def prepare_rmse_lead_families(pt, tags, leads, variables, ref="FP32", per_init=False,
+                               agg=None):
     ref_cases = sorted(_harness_cases(pt, ref).keys()) if ref in pt else []
     if not ref_cases:
         return {}
@@ -1354,7 +1414,14 @@ def prepare_rmse_lead_families(pt, tags, leads, variables, ref="FP32", per_init=
                     fracs.append((q - f) / f)
                 per_case.append(float(np.mean(fracs)))
             pct = [100.0 * v for v in per_case]
-            series.append(pct if per_init else float(np.mean(pct)))
+            if per_init:
+                series.append(pct)
+                continue
+            if (agg or rc_default_agg()) == "pooled":
+                series.append(100.0 * float(np.mean(
+                    _pooled_fracs_for(pt, tag, lead, variables, ref))))
+            else:
+                series.append(float(np.mean(pct)))
         out[tag] = series
     return out
 
@@ -1933,4 +2000,125 @@ def draw_cross_quantiser(data, outdir, name, title, caption=""):
         frac = min(0.4, 0.06 * (1 + len(caption) // 140))
         fig.subplots_adjust(bottom=frac)
         fig.text(0.5, frac * 0.55, caption, ha="center", va="top", fontsize=8.5, wrap=True)
+    return save(fig, outdir, name)
+
+
+# ------------------------------------------------------- uniform-scheme scorecard
+
+SCORECARD_VMAX = 50.0
+"""Colour clip for the scorecard, in percent. Matches the retired compare_runs.py"""
+
+
+def scorecard_pct_text(v):
+    """Cell text for a percent change, narrow enough not to overrun the cell."""
+    if not np.isfinite(v):
+        return ""
+    if abs(v) < 0.5:
+        return "0"
+    if abs(v) < 1000:
+        return f"{v:+.0f}"
+    if abs(v) < 10000:
+        return f"{v / 1000:+.1f}k"
+    return f"{v / 1000:+.0f}k"
+
+
+def prepare_scorecard(csv_path, card):
+    """One card of a scorecard.csv, grouped for draw_scorecard."""
+    rows = [r for r in read_csv(csv_path)
+            if r.get("block") and r.get("card") == card]
+    if not rows:
+        return None
+    order = {}
+    for r in rows:
+        order[int(r["order"])] = (r["metric"], r["block"])
+    labels = [order[k][0] for k in sorted(order)]
+    blocks = []
+    for k in sorted(order):
+        name = order[k][1]
+        if blocks and blocks[-1][0] == name:
+            blocks[-1][2] = k + 1
+        else:
+            blocks.append([name, k, k + 1])
+
+    leads = sorted({int(r["lead"]) for r in rows})
+    schemes = list(dict.fromkeys(r["scheme"] for r in rows))
+    grid, floor = {}, {}
+    for s in schemes:
+        grid[s] = np.full((len(labels), len(leads)), np.nan)
+        floor[s] = np.zeros_like(grid[s], dtype=bool)
+    for r in rows:
+        i, j = int(r["order"]), leads.index(int(r["lead"]))
+        try:
+            grid[r["scheme"]][i, j] = float(r["pct_diff"])
+        except ValueError:
+            continue
+        floor[r["scheme"]][i, j] = _truthy(r["at_floor"])
+    n_measured = sum(1 for r in rows if _truthy(r.get("floor_measured")))
+    return {"labels": labels, "blocks": [tuple(b) for b in blocks], "leads": leads,
+            "schemes": schemes, "grid": grid, "floor": floor,
+            "n_measured": n_measured, "n_cells": len(rows)}
+
+
+def draw_scorecard(data, outdir, name, title, caption=""):
+    """Percent change versus FP32: rows = metrics, columns = leads, one panel per scheme."""
+    caption = _cap(caption)
+    if data is None:
+        print(f"  skipped {name} (no scorecard rows)")
+        return None
+    labels, leads, schemes = data["labels"], data["leads"], data["schemes"]
+    n = len(schemes)
+    fig, axes = plt.subplots(1, n, figsize=(2.35 * n + 2.2, 0.30 * len(labels) + 2.6),
+                             sharey=True, squeeze=False)
+    cmap = plt.get_cmap("RdBu_r").copy()
+    cmap.set_bad("#f2f2f2")                    # nan: FP32 baseline is exactly 0
+
+    im = None
+    for ax, s in zip(axes.flat, schemes):
+        g, fl = data["grid"][s], data["floor"][s]
+        im = ax.imshow(np.clip(g, -SCORECARD_VMAX, SCORECARD_VMAX), cmap=cmap,
+                       vmin=-SCORECARD_VMAX, vmax=SCORECARD_VMAX, aspect="auto")
+        for i in range(len(labels)):
+            for j in range(len(leads)):
+                if np.isnan(g[i, j]):
+                    continue
+                strong = abs(g[i, j]) > SCORECARD_VMAX * 0.6
+                ax.text(j, i - 0.10, scorecard_pct_text(g[i, j]), ha="center",
+                        va="center", fontsize=6.4,
+                        color="white" if strong else "#111")
+                if fl[i, j]:
+                    ax.plot(j, i + 0.29, marker="o", ms=1.9,
+                            color="white" if strong else "#333", lw=0)
+        for _, start, stop in data["blocks"][:-1]:
+            ax.axhline(stop - 0.5, color="#333", lw=0.9)
+        for j in range(len(leads) - 1):
+            ax.axvline(j + 0.5, color="#ffffff", lw=0.6)
+        ax.set_xticks(range(len(leads)))
+        ax.set_xticklabels([f"+{lt}h" for lt in leads], fontsize=8)
+        ax.set_title(s, fontsize=9.5, fontweight="bold")
+        ax.tick_params(length=0)
+        for sp in ax.spines.values():
+            sp.set_visible(False)
+
+    axes.flat[0].set_yticks(range(len(labels)))
+    axes.flat[0].set_yticklabels(labels, fontsize=7.2)
+    last = axes.flat[-1]
+    for bname, start, stop in data["blocks"]:
+        last.text(len(leads) - 0.34, (start + stop - 1) / 2.0, bname, rotation=270,
+                  ha="left", va="center", fontsize=7.4, fontweight="bold",
+                  color="#444", clip_on=False)
+
+    cb = fig.colorbar(im, ax=axes, shrink=0.55, pad=0.06,
+                      label=f"% change vs FP32  (red = larger, clipped at "
+                            f"\u00b1{SCORECARD_VMAX:.0f}%)")
+    cb.outline.set_visible(False)
+    fig.suptitle(title, fontsize=11.5, fontweight="bold")
+    if data.get("n_measured"):
+        note = ("dot = mean shift within the measured numerical noise floor for that "
+                "metric and lead")
+        if data["n_measured"] < data.get("n_cells", 0):
+            note += ("   (floors exist for the registry metrics only; "
+                     f"{data['n_measured']} of {data['n_cells']} cells)")
+        fig.text(0.5, 0.012, note, ha="center", va="bottom", fontsize=7.6, color="#555")
+    if caption:
+        fig.text(0.5, -0.02, caption, ha="center", va="top", fontsize=8.5, wrap=True)
     return save(fig, outdir, name)

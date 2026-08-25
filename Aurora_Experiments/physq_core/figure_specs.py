@@ -629,10 +629,11 @@ def _rmse_compression_figure(r, outdir, name, title):
                     f"has narrowed to {_gap(by_lead[narrowest])}")
     series = fc.balance_as_percent_of_floor(series, floor_label=spec[0][0])
     per_init = fc.read_per_init(r.rpath("harness_rmse_lead_per_init.csv"))
+    per_var = fc.read_per_init_var(r.rpath("harness_rmse_lead_per_init_var.csv"))
     bands, agreement, agreement_of = None, None, ("", "")
     if per_init:
         bands = {sp[0]: b for sp, b in
-                 ((sp, fc.per_init_boot_ci(per_init, sp[1], leads)) for sp in spec) if b}
+                 ((sp, fc.pooled_boot_ci(per_var, sp[1], leads)) for sp in spec) if b}
         agreement = fc.paired_sign_agreement(per_init, spec[0][1], spec[1][1], leads)
         if agreement:
             agreement_of = (spec[0][0], spec[1][0])
@@ -1605,6 +1606,74 @@ REGISTRY.append(
                inputs=("stormer_noise_floor_ens/axis_null_p95.csv",
                        "ablation_analysis_ablation_*/sensitivity.csv"),
                title=REPRODUCIBILITY_FLOOR_STORMER_TITLE))
+
+
+RMSE_SCORECARD_TITLE = ("Percent change in RMSE versus FP32 by variable, level "
+                        "and lead time")
+PHYSICS_SCORECARD_TITLE = ("Percent change in physical-consistency diagnostics versus "
+                           "FP32 by metric and lead time")
+
+
+def _b_rmse_scorecard(roots, outdir):
+    """The AIWP-conventional scorecard: rows are (variable, level), one metric."""
+    r = roots["aurora"]
+    data = fc.prepare_scorecard(r.rpath("scorecard.csv"), "rmse")
+    return fc.draw_scorecard(data, outdir, "fig09_rmse_scorecard.png",
+                             RMSE_SCORECARD_TITLE)
+
+
+REGISTRY.append(
+    FigureSpec(id="rmse_scorecard", number=9, section="main", model="aurora",
+               build=_b_rmse_scorecard, inputs=("scorecard.csv",),
+               title=RMSE_SCORECARD_TITLE))
+
+
+def _b_physics_scorecard(roots, outdir):
+    """fig09's counterpart on the physics diagnostics, same schemes and leads."""
+    r = roots["aurora"]
+    data = fc.prepare_scorecard(r.rpath("scorecard.csv"), "physics")
+    return fc.draw_scorecard(data, outdir, "fig10_physics_scorecard.png",
+                             PHYSICS_SCORECARD_TITLE)
+
+
+REGISTRY.append(
+    FigureSpec(id="physics_scorecard", number=10, section="main", model="aurora",
+               build=_b_physics_scorecard, inputs=("scorecard.csv",),
+               title=PHYSICS_SCORECARD_TITLE))
+
+
+RMSE_SCORECARD_STORMER_TITLE = ("Stormer: percent change in RMSE versus FP32 by "
+                                "variable, level and lead time")
+PHYSICS_SCORECARD_STORMER_TITLE = ("Stormer: percent change in physical-consistency "
+                                   "diagnostics versus FP32 by metric and lead time")
+
+
+def _b_rmse_scorecard_stormer(roots, outdir):
+    """fig09's twin, on the same rows so the two can be read side by side."""
+    r = roots["stormer"]
+    data = fc.prepare_scorecard(r.rpath("scorecard.csv"), "rmse")
+    return fc.draw_scorecard(data, outdir, "figA32_rmse_scorecard_stormer.png",
+                             RMSE_SCORECARD_STORMER_TITLE)
+
+
+REGISTRY.append(
+    FigureSpec(id="rmse_scorecard_stormer", number=32, section="appendix",
+               model="stormer", build=_b_rmse_scorecard_stormer,
+               inputs=("scorecard.csv",), title=RMSE_SCORECARD_STORMER_TITLE))
+
+
+def _b_physics_scorecard_stormer(roots, outdir):
+    """fig10's twin. Every cell is a change against that model's OWN FP32 run, so the"""
+    r = roots["stormer"]
+    data = fc.prepare_scorecard(r.rpath("scorecard.csv"), "physics")
+    return fc.draw_scorecard(data, outdir, "figA33_physics_scorecard_stormer.png",
+                             PHYSICS_SCORECARD_STORMER_TITLE)
+
+
+REGISTRY.append(
+    FigureSpec(id="physics_scorecard_stormer", number=33, section="appendix",
+               model="stormer", build=_b_physics_scorecard_stormer,
+               inputs=("scorecard.csv",), title=PHYSICS_SCORECARD_STORMER_TITLE))
 
 
 def specs_for(section=None, model=None):
