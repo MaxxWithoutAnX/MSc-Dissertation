@@ -55,7 +55,7 @@ LABEL_LEAD = 120
 
 def _b_localisation_aurora(roots, outdir):
     r = roots["aurora"]
-    src = r.path("ablation_analysis_ablations_W8A8", "sensitivity.csv")  # PLURAL 'ablations'
+    src = r.path("ablation_analysis/ablations_W8A8", "sensitivity.csv")
     if not os.path.exists(src):
         return None
     data = fc.prepare_localisation(src, lead=120)
@@ -66,7 +66,7 @@ def _b_localisation_aurora(roots, outdir):
 
 def _b_localisation_stormer(roots, outdir):
     r = roots["stormer"]
-    src = r.path("ablation_analysis_ablation_W8A8", "sensitivity.csv")  # SINGULAR 'ablation'
+    src = r.path("ablation_analysis/ablations_W8A8", "sensitivity.csv")
     if not os.path.exists(src):
         return None
     data = fc.prepare_localisation(src, lead=120)
@@ -190,7 +190,7 @@ def _b_activation_blindness(roots, outdir):
     try:
         from allocator import load_distortion_table
         d = load_distortion_table(
-            {"W8A8": r.path("ablation_analysis_ablations_W8A8", "sensitivity.csv")},
+            {"W8A8": r.path("ablation_analysis/ablations_W8A8", "sensitivity.csv")},
             lead=lead, min_effect_frac=0.0)
     except Exception as e:                                   # pragma: no cover
         print(f"  skip activation_blindness ({e})")
@@ -298,8 +298,8 @@ def _b_concentration(roots, outdir):
     a, s = roots["aurora"], roots["stormer"]
     lead = 120
     curves = fc.prepare_concentration({
-        "Aurora": a.path("ablation_analysis_ablations_W8A8", "sensitivity.csv"),
-        "Stormer": s.path("ablation_analysis_ablation_W8A8", "sensitivity.csv"),
+        "Aurora": a.path("ablation_analysis/ablations_W8A8", "sensitivity.csv"),
+        "Stormer": s.path("ablation_analysis/ablations_W8A8", "sensitivity.csv"),
     }, lead=lead)
     if not curves:
         return None
@@ -327,13 +327,6 @@ _TRANSFER_AXES = (("balance", "balance"), ("conservation", "conservation"),
 def _b_surrogate_transfer(roots, outdir):
     a, s = roots["aurora"], roots["stormer"]
     sources = {
-        # figA09_predicted_rebuilt.csv IS FIRST, so under earlier-wins _merge_by_tag it owns
-        # balance/conservation/standard/config for every tag it carries. It is the prediction
-        # recomputed from the config the harness ACTUALLY RAN, ungated -- see
-        # predicted_standard.py --from-results for the three defects that fixes (a
-        # manifest/run mismatch on 14 Aurora tags, eleven gate-censored zeros that log-log
-        # silently dropped, and a vintage drift). The manifests follow it so tags it omits
-        # still resolve, and the *_standard sidecars remain for the same reason.
         "Aurora": ([a.rpath("figA09_predicted_rebuilt.csv"),
                     a.path("harness_configs_corrected.csv"),
                     a.path("harness_configs_standard.csv")],
@@ -343,8 +336,7 @@ def _b_surrogate_transfer(roots, outdir):
                      s.path("stormer_harness_configs_standard.csv")],
                     [s.rpath("harness_results.csv"), s.rpath("harness_axis_standard.csv")]),
     }
-    # The random arms are matched-budget controls, not allocator outputs: no additive-surrogate
-    # prediction exists for them. See prepare_transfer's `exclude_guides` note.
+
     EXCLUDE_GUIDES = ("random",)
     fig, axs = plt.subplots(1, len(_TRANSFER_AXES), figsize=(15.2, 5.4))
     drew = False
@@ -480,12 +472,12 @@ REGISTRY: list = [
     # ---- main body
     FigureSpec(id="concentration", number=2, section="main", model="cross",
                build=_b_concentration,
-               inputs=("ablation_analysis_ablations_W8A8/sensitivity.csv",
-                       "ablation_analysis_ablation_W8A8/sensitivity.csv"),
+               inputs=("ablation_analysis/ablations_W8A8/sensitivity.csv",
+                       "ablation_analysis/ablations_W8A8/sensitivity.csv"),
                title="Cumulative share of physics damage by layer group"),
     FigureSpec(id="localisation_aurora", number=3, section="main", model="aurora",
                build=_b_localisation_aurora,
-               inputs=("ablation_analysis_ablations_W8A8/sensitivity.csv",),
+               inputs=("ablation_analysis/ablations_W8A8/sensitivity.csv",),
                title="Aurora: distortion per layer group"),
     FigureSpec(id="damage_removed_aurora", number=4, section="main", model="aurora",
                build=_b_damage_removed_aurora,
@@ -520,7 +512,7 @@ REGISTRY: list = [
                title="Stormer: paired effects at matched budget"),
     FigureSpec(id="localisation_stormer", number=3, section="appendix", model="stormer",
                build=_b_localisation_stormer,
-               inputs=("ablation_analysis_ablation_W8A8/sensitivity.csv",),
+               inputs=("ablation_analysis/ablations_W8A8/sensitivity.csv",),
                title="Stormer: distortion per layer group"),
     FigureSpec(id="axis_decomposition_aurora", number=4, section="appendix", model="aurora",
                build=_b_axis_decomposition_aurora,
@@ -541,7 +533,7 @@ REGISTRY: list = [
                # the second entry is the FALLBACK the build tries when _28 is absent
                inputs=("activation_analysis/activation_stats_table_28.csv",
                        "activation_analysis/activation_stats_table.csv",
-                       "ablation_analysis_ablations_W8A8/sensitivity.csv"),
+                       "ablation_analysis/ablations_W8A8/sensitivity.csv"),
                title="Activation outliers vs physics damage"),
     FigureSpec(id="calibration_drift", number=8, section="appendix", model="aurora",
                build=_b_calibration_drift,
@@ -787,7 +779,7 @@ def _b_additivity(roots, outdir):
 REGISTRY.append(
     FigureSpec(id="additivity", number=15, section="appendix", model="cross",
                build=_b_additivity,
-               inputs=("ablation_analysis_*/additivity_120h.csv",
+               inputs=("ablation_analysis/*/additivity_120h.csv",
                        "harness_results_paired.csv",
                        "harness_results_composite.csv",
                        "stormer_paired_wind_balance.csv",
@@ -1032,8 +1024,8 @@ CONCENTRATION_AXES = (("balance", "balance", "-", "o", "physics"),
 def _b_concentration_by_axis(roots, outdir):
     a, s = roots["aurora"], roots["stormer"]
     lead = 120
-    srcs = {"Aurora": a.path("ablation_analysis_ablations_W8A8", "sensitivity.csv"),
-            "Stormer": s.path("ablation_analysis_ablation_W8A8", "sensitivity.csv")}
+    srcs = {"Aurora": a.path("ablation_analysis/ablations_W8A8", "sensitivity.csv"),
+            "Stormer": s.path("ablation_analysis/ablations_W8A8", "sensitivity.csv")}
     curves = {axis: fc.prepare_concentration(srcs, lead=lead, axis=axis)
               for axis, _, _, _, _ in CONCENTRATION_AXES}
     models = [m for m in ("Aurora", "Stormer")
@@ -1072,8 +1064,8 @@ def _b_concentration_by_axis(roots, outdir):
 REGISTRY.append(
     FigureSpec(id="concentration_by_axis", number=17, section="appendix", model="cross",
                build=_b_concentration_by_axis,
-               inputs=("ablation_analysis_ablations_W8A8/sensitivity.csv",
-                       "ablation_analysis_ablation_W8A8/sensitivity.csv"),
+               inputs=("ablation_analysis/ablations_W8A8/sensitivity.csv",
+                       "ablation_analysis/ablations_W8A8/sensitivity.csv"),
                title=CONCENTRATION_AXIS_TITLE,
 ))
 
@@ -1317,7 +1309,7 @@ CROSS_QUANTISER_TITLE = "Aurora: share of balance damage, by scheme"
 def _b_cross_quantiser(roots, outdir):
     r = roots["aurora"]
     data = fc.prepare_cross_quantiser(
-        r.path("ablation_analysis_cross_scheme", "cross_scheme.csv"), lead=120)
+        r.path("ablation_analysis/cross_scheme", "cross_scheme.csv"), lead=120)
     return fc.draw_cross_quantiser(data, outdir, "figA25_cross_quantiser.png",
                                    CROSS_QUANTISER_TITLE)
 
@@ -1325,7 +1317,7 @@ def _b_cross_quantiser(roots, outdir):
 REGISTRY.append(
     FigureSpec(id="cross_quantiser", number=25, section="appendix", model="aurora",
                build=_b_cross_quantiser,
-               inputs=("ablation_analysis_cross_scheme/cross_scheme.csv",),
+               inputs=("ablation_analysis/cross_scheme/cross_scheme.csv",),
                title=CROSS_QUANTISER_TITLE,))
 
 
@@ -1388,11 +1380,11 @@ REGISTRY.append(
 CROSS_QUANTISER_STORMER_TITLE = "Stormer: share of balance damage, by scheme"
 def _b_cross_quantiser_stormer(roots, outdir):
     """Does Stormer's localisation survive a change of quantiser? Reads the same
-    ablation_analysis_cross_scheme/cross_scheme.csv layout Aurora uses -- identical header,
+    ablation_analysis/cross_scheme/cross_scheme.csv layout Aurora uses -- identical header,
     Stormer's own eleven layer groups."""
     r = roots["stormer"]
     data = fc.prepare_cross_quantiser(
-        r.path("ablation_analysis_cross_scheme", "cross_scheme.csv"), lead=120)
+        r.path("ablation_analysis/cross_scheme", "cross_scheme.csv"), lead=120)
     return fc.draw_cross_quantiser(data, outdir, "figA29_cross_quantiser_stormer.png",
                                    CROSS_QUANTISER_STORMER_TITLE)
 
@@ -1400,7 +1392,7 @@ def _b_cross_quantiser_stormer(roots, outdir):
 REGISTRY.append(
     FigureSpec(id="cross_quantiser_stormer", number=29, section="appendix", model="stormer",
                build=_b_cross_quantiser_stormer,
-               inputs=("ablation_analysis_cross_scheme/cross_scheme.csv",),
+               inputs=("ablation_analysis/cross_scheme/cross_scheme.csv",),
                title=CROSS_QUANTISER_STORMER_TITLE,
 ))
 
@@ -1504,7 +1496,7 @@ def _b_additivity_by_axis(roots, outdir):
 REGISTRY.append(
     FigureSpec(id="additivity_by_axis", number=31, section="appendix", model="cross",
                build=_b_additivity_by_axis,
-               inputs=("ablation_analysis_*/additivity_120h.csv",),
+               inputs=("ablation_analysis/*/additivity_120h.csv",),
                title=ADDITIVITY_BY_AXIS_TITLE))
 
 
@@ -1512,12 +1504,12 @@ REGISTRY.append(
 
 def _scheme_csvs(root):
     out = {}
-    for pattern in ("ablation_analysis_ablation_*", "ablation_analysis_ablations_*"):
+    for pattern in ("ablation_analysis/ablations_*",):
         for d in sorted(glob.glob(root.path(pattern))):
             csvp = os.path.join(d, "sensitivity.csv")
             if not os.path.exists(csvp):
                 continue
-            scheme = re.sub(r"^ablation_analysis_ablations?_", "", os.path.basename(d))
+            scheme = re.sub(r"^ablations?_", "", os.path.basename(d))
             out.setdefault(scheme, csvp)
     return out
 
@@ -1529,7 +1521,7 @@ REPRODUCIBILITY_FLOOR_TITLE = (
 def _b_reproducibility_floor(roots, outdir):
     r = roots["aurora"]
     data = fc.prepare_reproducibility_floor(
-        r.path("noise_floor_ens_n48", "axis_null_p95_oatbasis.csv"),
+        r.path("cluster_runs/noise_floor_ens_n48", "axis_null_p95_oatbasis.csv"),
         _scheme_csvs(r), lead=120)
     return fc.draw_reproducibility_floor(
         data, outdir, "figA23_reproducibility_floor.png", REPRODUCIBILITY_FLOOR_TITLE)
@@ -1538,8 +1530,8 @@ def _b_reproducibility_floor(roots, outdir):
 REGISTRY.append(
     FigureSpec(id="reproducibility_floor", number=23, section="appendix", model="aurora",
                build=_b_reproducibility_floor,
-               inputs=("noise_floor_ens_n48/axis_null_p95_oatbasis.csv",
-                       "ablation_analysis_ablations_*/sensitivity.csv"),
+               inputs=("cluster_runs/noise_floor_ens_n48/axis_null_p95_oatbasis.csv",
+                       "ablation_analysis/ablations_*/sensitivity.csv"),
                title=REPRODUCIBILITY_FLOOR_TITLE))
 
 
@@ -1550,7 +1542,7 @@ REPRODUCIBILITY_FLOOR_STORMER_TITLE = (
 def _b_reproducibility_floor_stormer(roots, outdir):
     r = roots["stormer"]
     data = fc.prepare_reproducibility_floor(
-        r.path("stormer_noise_floor_ens", "axis_null_p95_oatbasis.csv"),
+        r.path("cluster_runs/noise_floor_ens_n47", "axis_null_p95_oatbasis.csv"),
         _scheme_csvs(r), lead=120)
     return fc.draw_reproducibility_floor(
         data, outdir, "figA26_reproducibility_floor_stormer.png",
@@ -1560,8 +1552,8 @@ def _b_reproducibility_floor_stormer(roots, outdir):
 REGISTRY.append(
     FigureSpec(id="reproducibility_floor_stormer", number=26, section="appendix",
                model="stormer", build=_b_reproducibility_floor_stormer,
-               inputs=("stormer_noise_floor_ens/axis_null_p95_oatbasis.csv",
-                       "ablation_analysis_ablation_*/sensitivity.csv"),
+               inputs=("cluster_runs/noise_floor_ens_n47/axis_null_p95_oatbasis.csv",
+                       "ablation_analysis/ablations_*/sensitivity.csv"),
                title=REPRODUCIBILITY_FLOOR_STORMER_TITLE))
 
 

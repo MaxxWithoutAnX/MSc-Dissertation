@@ -1,8 +1,0 @@
-variant,protected_order
-representative|wind,adaln|embed|head|b18-23_mlp|b18-23_attn|b0-5_mlp|b6-11_attn|b12-17_mlp|b0-5_attn|b12-17_attn|b6-11_mlp
-mean|all,adaln|head|embed|b18-23_mlp|b18-23_attn|b0-5_mlp|b12-17_mlp|b6-11_mlp|b6-11_attn|b12-17_attn|b0-5_attn
-mean|wind,adaln|embed|head|b18-23_mlp|b18-23_attn|b0-5_mlp|b12-17_mlp|b6-11_attn|b6-11_mlp|b12-17_attn|b0-5_attn
-mean|wind+hyps,adaln|head|embed|b18-23_mlp|b18-23_attn|b0-5_mlp|b12-17_mlp|b6-11_attn|b6-11_mlp|b12-17_attn|b0-5_attn
-mean|wind+lapse,adaln|embed|head|b18-23_mlp|b18-23_attn|b0-5_mlp|b12-17_mlp|b6-11_attn|b6-11_mlp|b12-17_attn|b0-5_attn
-mean|wind+both,adaln|head|embed|b18-23_mlp|b18-23_attn|b0-5_mlp|b12-17_mlp|b6-11_attn|b6-11_mlp|b12-17_attn|b0-5_attn
-first_pc|wind+both,head|adaln|embed|b18-23_mlp|b18-23_attn|b12-17_mlp|b6-11_mlp|b0-5_mlp|b6-11_attn|b12-17_attn|b0-5_attn

@@ -11,13 +11,13 @@ from run_frontiers import run_frontier, write_random_csv
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 SCHEME_CSV = {
-    "W4":      "ablation_analysis_ablation_W4/sensitivity.csv",
-    "W8":      "ablation_analysis_ablation_W8/sensitivity.csv",
-    "W8A8":    "ablation_analysis_ablation_W8A8/sensitivity.csv",
-    "W8A8_sq": "ablation_analysis_ablations_W8A8_sq/sensitivity.csv",
+    "W4":      "ablation_analysis/ablations_W4/sensitivity.csv",
+    "W8":      "ablation_analysis/ablations_W8/sensitivity.csv",
+    "W8A8":    "ablation_analysis/ablations_W8A8/sensitivity.csv",
+    "W8A8_sq": "ablation_analysis/ablations_W8A8_sq/sensitivity.csv",
 }
 
-DEFAULT_OUTDIR = os.path.join(HERE, "frontier_stormer")
+DEFAULT_OUTDIR = os.path.join(HERE, "frontiers")
 
 
 def _csv(scheme):

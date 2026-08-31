@@ -13,7 +13,7 @@ from plot_common import (
 
 key = sys.argv[1] if len(sys.argv) > 1 else "FP32"
 run = load_run(key)
-out_dir = ensure_dir(f"plots_{key}")
+out_dir = ensure_dir(f"plots/{key}")
 
 dates = run.dates
 lead_times = run.leads

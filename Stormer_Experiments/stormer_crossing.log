@@ -1,8 +1,0 @@
-wrote harness_results_n47\harness_rmse_crossing.csv (12 rows)
-
-=== W8A8_floor - W8A8_span1 RMSE gap (block=2) ===
-  lead    diff pp                95% CI  excl 0   sign robust across blocks
-    24       1.44  [   1.39,    1.51]   YES      yes
-    72       1.02  [   0.73,    1.33]   YES      yes
-   120       0.55  [   0.19,    0.98]   YES      yes
-   168       0.32  [  -0.18,    0.88]   --       yes  (not all blocks exclude 0)

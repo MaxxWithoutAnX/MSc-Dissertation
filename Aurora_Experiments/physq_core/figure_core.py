@@ -85,7 +85,7 @@ def _init_order(d):
 
 def per_init_boot_ci(per_init, tag, leads, n_boot=2000, ci=95):
     """Moving-block bootstrap CI on the MEAN per-init degradation, one per lead.
-    Same estimator as the plots_*/ RMSE bands (plot_common.block_bootstrap).
+    Same estimator as the plots/*/ RMSE bands (plot_common.block_bootstrap).
     Based off GraphCast paper reporting RMSE spread."""
     from plot_common import block_bootstrap
     out = []
@@ -621,7 +621,7 @@ def prepare_additivity(roots_by_model, lead=120, tol_col="additive_ok", buckets=
     out = []
     for model, root in roots_by_model.items():
         cells = {}
-        for d in sorted(glob.glob(root.path("ablation_analysis_*"))):
+        for d in sorted(glob.glob(root.path("ablation_analysis/*"))):
             real_scheme = _scheme_of_dir(d)
             scheme = POOLED_SCHEME if pooled else real_scheme
             rows = read_csv(os.path.join(d, f"additivity_{lead}h.csv"))

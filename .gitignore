@@ -1,0 +1,42 @@
+
+.DS_Store
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.pytest_cache/
+.ipynb_checkpoints/
+.venv/
+.antigravitycli
+
+# Large files
+data/
+results_*/
+ablation_W*/
+ablations_W*/
+ablation_W*_sampled/
+noise_floor_ens/
+all_metrics*.pt
+**/harness_results*/**/*.pt
+*.ckpt
+*.nc
+*.h5
+*.npy
+*.zarr/
+.env
+*.ipynb
+
+# Miscellaneous
+figures_check/
+tables/
+scripts/
+_verify_rho.py
+
+# Stormer Clone
+# Stormer_Experiments/stormer/ is a clone of
+# https://github.com/tung-nd/stormer.git and carries its OWN .git (34 MB pack).
+# Re-create with:
+# git clone https://github.com/tung-nd/stormer.git
+stormer/

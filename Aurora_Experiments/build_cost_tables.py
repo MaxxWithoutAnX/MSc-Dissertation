@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "ablation_scripts"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "cluster_runs", "ablation_scripts"))
 from groups import build_groups
 from aurora import AuroraPretrained, Batch, Metadata
 

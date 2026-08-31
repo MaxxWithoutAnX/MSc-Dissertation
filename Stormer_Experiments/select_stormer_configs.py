@@ -9,7 +9,7 @@ from select_harness_configs import select_all
 import run_stormer_frontiers as rsf
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-FRONTIER_DIR = os.path.join(HERE, "frontier_stormer")
+FRONTIER_DIR = os.path.join(HERE, "frontiers")
 MANIFEST_NAME = "stormer_harness_configs.csv"
 
 

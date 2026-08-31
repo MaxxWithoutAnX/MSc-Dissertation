@@ -104,7 +104,6 @@ def _panels(phys, rmse, band, floor, title, png_path, cost_label, keys=PANELS):
         ax.set_xlabel(cost_label)
         ax.set_ylabel(f"{key} distortion (Σ|SVR|)")
         ax.set_title(PANEL_TITLE.get(key, key), fontsize=10)
-        ax.grid(alpha=0.3)
     axes[0][0].legend()
     fig.suptitle(title)
     fig.tight_layout()
@@ -119,7 +118,7 @@ _two_panel = _panels
 def run_dev_frontier_W8(lead=120, outdir="."):
     """W8 -> bf16 protection frontier (dev/validation vehicle). floor = W8."""
     os.makedirs(outdir, exist_ok=True)
-    scheme_csvs = {"W8": "ablation_analysis_ablations_W8/sensitivity.csv"}
+    scheme_csvs = {"W8": "ablation_analysis/ablations_W8/sensitivity.csv"}
     precisions = ["W8", "bf16"]
     ct = torch.load("cost_tables.pt", weights_only=False)
 
@@ -204,13 +203,13 @@ def run_frontier_B(scheme="W8A8", lead=120, outdir=".", min_effect_frac=0.0,
                    axis_floor=0.0):
     """Frontier B: {scheme, bf16}, floor=scheme, protected-FLOP-fraction axis (the
     deployment/headline frontier). scheme='W8A8_sq' gives the SmoothQuant overlay."""
-    csv_path = f"ablation_analysis_ablations_{scheme}/sensitivity.csv"
+    csv_path = f"ablation_analysis/ablations_{scheme}/sensitivity.csv"
     return run_frontier({scheme: csv_path}, [scheme, "bf16"], scheme, "flop",
                         f"B_{scheme}", lead, outdir, min_effect_frac, axis_floor)
 
 
-def run_frontier_A(w4_csv="ablation_analysis_ablations_W4/sensitivity.csv",
-                   w8_csv="ablation_analysis_ablations_W8/sensitivity.csv",
+def run_frontier_A(w4_csv="ablation_analysis/ablations_W4/sensitivity.csv",
+                   w8_csv="ablation_analysis/ablations_W8/sensitivity.csv",
                    lead=120, outdir=".", min_effect_frac=0.0, axis_floor=0.0):
     """Frontier A: {W4, W8, bf16}, floor=W4, model-weight-bytes axis (the compression /
     model-size scientific frontier)."""

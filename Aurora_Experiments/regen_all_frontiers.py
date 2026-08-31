@@ -10,7 +10,7 @@ from allocator import load_distortion_table
 from axis_noise_floor import DEFAULT_FRAC
 from run_frontiers import run_frontier_B, run_frontier_A, write_random_csv
 
-OUT = "frontier_corrected"
+OUT = "frontiers/corrected"
 LEAD = 120
 MIN_EFFECT_FRAC = DEFAULT_FRAC  # 0.01, relative to the per-(axis, precision) max
 AXIS_FLOOR = 0.0                # absolute rule: implemented, measured, NOT used (see
@@ -18,7 +18,7 @@ AXIS_FLOOR = 0.0                # absolute rule: implemented, measured, NOT used
 
 
 def main(outdir=OUT, min_effect_frac=MIN_EFFECT_FRAC, lead=LEAD, axis_floor=AXIS_FLOOR):
-    assert outdir != "frontier_flops_real", \
+    assert outdir != "frontiers/flops_real", \
         "refusing to overwrite the frontiers the measured manifest was frozen from"
     OUT_ = outdir
     os.makedirs(OUT_, exist_ok=True)
@@ -30,11 +30,11 @@ def main(outdir=OUT, min_effect_frac=MIN_EFFECT_FRAC, lead=LEAD, axis_floor=AXIS
     run_frontier_B("W8A8_sq", lead=lead, outdir=OUT_, **fl)
 
     # Frontier A: W4+W8 -> bf16, model-weight-bytes axis.
-    run_frontier_A(w4_csv="ablation_analysis_ablations_W4/sensitivity.csv",
-                   w8_csv="ablation_analysis_ablations_W8/sensitivity.csv",
+    run_frontier_A(w4_csv="ablation_analysis/ablations_W4/sensitivity.csv",
+                   w8_csv="ablation_analysis/ablations_W8/sensitivity.csv",
                    lead=lead, outdir=OUT_, **fl)
 
-    w8a8_csv = {"W8A8": "ablation_analysis_ablations_W8A8/sensitivity.csv"}
+    w8a8_csv = {"W8A8": "ablation_analysis/ablations_W8A8/sensitivity.csv"}
     d_eval = load_distortion_table(w8a8_csv, lead=lead, axes=CONSISTENCY)
     cost = flop_cost(list(d_eval), ct, floor="W8A8")
     write_random_csv(w8a8_csv, cost, "W8A8", os.path.join(OUT_, "random_W8A8.csv"),

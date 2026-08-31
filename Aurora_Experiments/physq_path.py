@@ -13,5 +13,16 @@ if CORE not in sys.path:
     sys.path.insert(0, CORE)
 
 _SCRIPTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "scripts")
-if _SCRIPTS not in sys.path:
+if os.path.isdir(_SCRIPTS) and _SCRIPTS not in sys.path:
     sys.path.insert(0, _SCRIPTS)
+
+# The cluster job drivers live in cluster_runs/; physq_core modules import them
+# by name (e.g. rescore_with_floor -> run_precision_harness).
+_CLUSTER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cluster_runs")
+if os.path.isdir(_CLUSTER) and _CLUSTER not in sys.path:
+    sys.path.insert(0, _CLUSTER)
+
+# The download/regrid scripts live in data_prep/ (mirrors Stormer_Experiments/data_prep).
+_DP = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data_prep")
+if os.path.isdir(_DP) and _DP not in sys.path:
+    sys.path.insert(0, _DP)

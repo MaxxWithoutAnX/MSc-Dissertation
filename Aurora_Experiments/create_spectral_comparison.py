@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from plot_common import (load_run, RUNS, RUN_COLORS, SPECTRAL_VARS,
                          metric_registry, per_init_series, ensure_dir)
 
-OUT = ensure_dir("plots_spectral_comparison")
+OUT = ensure_dir("plots/spectral_comparison")
 PAIRS = [("SpecRes", "SpecResLog"), ("SpecDiv>", "SpecDivW1")]
 
 # Left/right y-axis labels for each (existing, paper) metric pair.

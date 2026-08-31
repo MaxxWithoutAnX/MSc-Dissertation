@@ -21,19 +21,19 @@ AXIS = "standard"
 LEAD = 120
 
 AURORA_SCHEME_CSVS = {
-    "W8A8": {"W8A8": "ablation_analysis_ablations_W8A8/sensitivity.csv"},
-    "W8A8_sq": {"W8A8_sq": "ablation_analysis_ablations_W8A8_sq/sensitivity.csv"},
-    "W4": {"W4": "ablation_analysis_ablations_W4/sensitivity.csv",
-           "W8": "ablation_analysis_ablations_W8/sensitivity.csv"},
+    "W8A8": {"W8A8": "ablation_analysis/ablations_W8A8/sensitivity.csv"},
+    "W8A8_sq": {"W8A8_sq": "ablation_analysis/ablations_W8A8_sq/sensitivity.csv"},
+    "W4": {"W4": "ablation_analysis/ablations_W4/sensitivity.csv",
+           "W8": "ablation_analysis/ablations_W8/sensitivity.csv"},
 }
 # 0.01, the practical-equivalence gate regen_all_frontiers.py selected the manifest under.
 AURORA_MIN_EFFECT_FRAC = 0.01
 
 STORMER_SCHEME_CSVS = {
-    "W8A8": {"W8A8": "ablation_analysis_ablation_W8A8/sensitivity.csv"},
-    "W8A8_sq": {"W8A8_sq": "ablation_analysis_ablations_W8A8_sq/sensitivity.csv"},
-    "W4": {"W4": "ablation_analysis_ablation_W4/sensitivity.csv",
-           "W8": "ablation_analysis_ablation_W8/sensitivity.csv"},
+    "W8A8": {"W8A8": "ablation_analysis/ablations_W8A8/sensitivity.csv"},
+    "W8A8_sq": {"W8A8_sq": "ablation_analysis/ablations_W8A8_sq/sensitivity.csv"},
+    "W4": {"W4": "ablation_analysis/ablations_W4/sensitivity.csv",
+           "W8": "ablation_analysis/ablations_W8/sensitivity.csv"},
 }
 # UNGATED: no Stormer noise-floor ensemble exists, so its frontiers were built at 0.0.
 STORMER_MIN_EFFECT_FRAC = 0.0

@@ -196,31 +196,36 @@ def probe_configs(all_groups, floor, divergent=("dec2_attn", "upsample"),
 
 SCHEMES = {
     "W8A8": dict(floor="W8A8",
-                 physics="frontier_flops_real/frontier_B_W8A8_physics.csv",
-                 rmse="frontier_flops_real/frontier_B_W8A8_rmse.csv",
-                 random="frontier_flops_real/random_W8A8.csv"),
+                 physics="frontiers/flops_real/frontier_B_W8A8_physics.csv",
+                 rmse="frontiers/flops_real/frontier_B_W8A8_rmse.csv",
+                 random="frontiers/flops_real/random_W8A8.csv"),
     "W8A8_sq": dict(floor="W8A8_sq",
-                    physics="frontier_flops_real/frontier_B_W8A8_sq_physics.csv",
-                    rmse="frontier_flops_real/frontier_B_W8A8_sq_rmse.csv"),
+                    physics="frontiers/flops_real/frontier_B_W8A8_sq_physics.csv",
+                    rmse="frontiers/flops_real/frontier_B_W8A8_sq_rmse.csv"),
     "W4W8": dict(floor="W4",
-                 physics="frontier_flops_real/frontier_A_W4W8_physics.csv",
-                 rmse="frontier_flops_real/frontier_A_W4W8_rmse.csv"),
+                 physics="frontiers/flops_real/frontier_A_W4W8_physics.csv",
+                 rmse="frontiers/flops_real/frontier_A_W4W8_rmse.csv"),
 }
 
+# NOTE: frontiers/corrected/ is NOT committed. It is regenerated on demand by
+# regen_all_frontiers.py (OUT="frontiers/corrected"); run that before using this map.
+# Regeneration does not reproduce the frontier harness_configs_corrected.csv was
+# selected from -- the sensitivity tables have changed since. That manifest is
+# committed at the repo root and is the artefact of record.
 SCHEMES_CORRECTED = {
     "W8A8": dict(floor="W8A8",
-                 physics="frontier_corrected/frontier_B_W8A8_physics.csv",
-                 rmse="frontier_corrected/frontier_B_W8A8_rmse.csv",
-                 order="frontier_corrected/guide_order_B_W8A8_rmse.csv",
-                 random="frontier_corrected/random_W8A8.csv"),
+                 physics="frontiers/corrected/frontier_B_W8A8_physics.csv",
+                 rmse="frontiers/corrected/frontier_B_W8A8_rmse.csv",
+                 order="frontiers/corrected/guide_order_B_W8A8_rmse.csv",
+                 random="frontiers/corrected/random_W8A8.csv"),
     "W8A8_sq": dict(floor="W8A8_sq",
-                    physics="frontier_corrected/frontier_B_W8A8_sq_physics.csv",
-                    rmse="frontier_corrected/frontier_B_W8A8_sq_rmse.csv",
-                    order="frontier_corrected/guide_order_B_W8A8_sq_rmse.csv"),
+                    physics="frontiers/corrected/frontier_B_W8A8_sq_physics.csv",
+                    rmse="frontiers/corrected/frontier_B_W8A8_sq_rmse.csv",
+                    order="frontiers/corrected/guide_order_B_W8A8_sq_rmse.csv"),
     "W4W8": dict(floor="W4",
-                 physics="frontier_corrected/frontier_A_W4W8_physics.csv",
-                 rmse="frontier_corrected/frontier_A_W4W8_rmse.csv",
-                 order="frontier_corrected/guide_order_A_W4W8_rmse.csv"),
+                 physics="frontiers/corrected/frontier_A_W4W8_physics.csv",
+                 rmse="frontiers/corrected/frontier_A_W4W8_rmse.csv",
+                 order="frontiers/corrected/guide_order_A_W4W8_rmse.csv"),
 }
 
 

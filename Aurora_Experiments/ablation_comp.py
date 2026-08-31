@@ -759,7 +759,7 @@ def plot_collinearity(records, all_labels, groups, lead, out_dir):
 def analyse_dir(cfg_dir, leads_arg=None, norm_mode="auto",
                 floor_path="noise_floor_detailed.pt"):
     name = os.path.basename(os.path.normpath(cfg_dir))
-    out = ensure_dir(f"ablation_analysis_{name}")
+    out = ensure_dir(f"ablation_analysis/{name}")
     print(f"\n=== {name} -> {out}/ ===", flush=True)
 
     fp32_run = MetricsRun("fp32", torch.load(os.path.join(cfg_dir, "fp32_metrics.pt"),
@@ -965,7 +965,7 @@ def main(argv=None):
 
     summaries = [analyse_dir(d, leads, a.norm, a.noise_floor) for d in dirs]
     if len(summaries) >= 2:
-        cross_scheme(summaries, ensure_dir("ablation_analysis_cross_scheme"))
+        cross_scheme(summaries, ensure_dir("ablation_analysis/cross_scheme"))
 
 
 if __name__ == "__main__":

@@ -21,7 +21,7 @@ def _csv_writer(path):
 
 
 LEAD = 120
-DIR = "noise_floor_ens_n48"
+DIR = "cluster_runs/noise_floor_ens_n48"
 AXES = ["balance", "conservation", "standard"]
 
 AURORA_G1 = 0.03066     # film balance @W8 -- the floor must erase this
