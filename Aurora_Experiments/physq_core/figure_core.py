@@ -174,32 +174,8 @@ def prepare_localisation(sensitivity_csv, lead=120, scheme="W8A8", min_effect_fr
             "rmse": rmse}
 
 
-def _rank_divergence_note(data):
-    rmse = data.get("rmse")
-    if not rmse or any(v is None for v in rmse):
-        return None
-    groups = data["groups"]
-    # `groups` is already balance-descending, so its index IS the balance rank.
-    order = sorted(range(len(groups)), key=lambda i: -rmse[i])
-    rmse_rank = {i: r + 1 for r, i in enumerate(order)}
-    worst = 0                       # the group RMSE most under-ranks
-    for i in range(len(groups)):
-        if rmse_rank[i] - (i + 1) > rmse_rank[worst] - (worst + 1):
-            worst = i
-    top_rmse = order[0]
-    if rmse_rank[worst] - (worst + 1) <= 0:
-        return None
-    return ("RMSE and the physics axes disagree on the group that matters: "
-            f"{groups[worst]} is rank {worst + 1} of {len(groups)} on balance but rank "
-            f"{rmse_rank[worst]} on RMSE, while RMSE's own top pick ({groups[top_rmse]}) "
-            f"is rank {top_rmse + 1} on balance.")
 
 
-CAPTIONS_ON_FIGURE = False
-
-
-def _cap(caption):
-    return caption if (CAPTIONS_ON_FIGURE and caption) else ""
 
 
 def draw_localisation(data, outdir, name, title, lead=120):
@@ -212,8 +188,8 @@ def draw_localisation(data, outdir, name, title, lead=120):
         series.append(("RMSE (standard axis)", data["rmse"], None, C["rmse"]))
     return draw_dotplot(
         data["groups"], series, outdir, name, title,
-        f"distortion @{lead}h  (SVR, log; higher = more damage)",
-        logx=True, refline=1.0, annotate=_rank_divergence_note(data))
+        f"distortion @{lead}h  (SVR, log)",
+        logx=True, refline=1.0)
 
 
 # ------------------------------------------------------------------ damage removed
@@ -231,7 +207,7 @@ def prepare_damage_removed(csv_path, block="2", labels_csv=None,
             "is_rmse": [("rmse" in t or "probe" in t) for t in tags]}
 
 
-def draw_damage_removed(data, outdir, name, title, caption=None):
+def draw_damage_removed(data, outdir, name, title):
     if not data["tags"]:
         print(f"  skipped {name} (no tags in prepared data)")
         return None
@@ -249,10 +225,6 @@ def draw_damage_removed(data, outdir, name, title, caption=None):
     ax.set_xlabel("physics damage removed vs the uniform floor  (%)")
     ax.set_title(title, fontsize=12, fontweight="bold")
     style(ax)
-    if caption:
-        frac = min(0.34, 0.055 * (1 + len(caption) // 150))
-        fig.tight_layout(rect=[0, frac, 1, 1])
-        fig.text(0.5, frac * 0.88, caption, ha="center", va="top", fontsize=8.5, wrap=True)
     return save(fig, outdir, name)
 
 
@@ -291,9 +263,8 @@ def draw_paired_effects(data, outdir, name, title):
     ax.set_yticks(y)
     ax.set_yticklabels(lab, fontsize=7.5)
     ax.invert_yaxis()
-    ax.set_xlabel("physics-guided advantage  (RMSE distortion / physics distortion, log)\n"
-                  ">1 = physics better;  small marks = per-label terms averaging to the point")
-    ax.set_title(f"{title}\n{data['endpoint']}", fontsize=11, fontweight="bold")
+    ax.set_xlabel("physics-guided advantage  (RMSE distortion / physics distortion, log)")
+    ax.set_title(title, fontsize=11, fontweight="bold")
     style(ax)
     return save(fig, outdir, name)
 
@@ -345,8 +316,7 @@ def draw_axis_decomposition(data, outdir, name, title):
 # ------------------------------------------------------------------ shared: dot plots
 
 def draw_dotplot(labels, series, outdir, name, title, xlabel,
-                 logx=True, refline=1.0, annotate=None, caption=None):
-    annotate = _cap(annotate)          # a sentence on the axes is still a caption
+                 logx=True, refline=1.0):
     if not labels or not series:
         print(f"  skipped {name} (no data)")
         return None
@@ -369,30 +339,11 @@ def draw_dotplot(labels, series, outdir, name, title, xlabel,
     ax.set_yticklabels(labels, fontsize=8)
     ax.invert_yaxis()
     ax.set_xlabel(xlabel)
-    _legend_rows = 0 if k <= 1 else (1 if k <= 2 else 2)
-    ax.set_title(title, fontsize=11, fontweight="bold",
-                 pad=(6.0 + 14.0 * _legend_rows) if (annotate or caption) else 6.0)
+    ax.set_title(title, fontsize=11, fontweight="bold", pad=6.0)
     has_labels = k > 1 or bool(series[0][0])
     if has_labels:
-        if annotate or caption:
-            ax.legend(frameon=False, fontsize=8.5, loc="lower left",
-                      bbox_to_anchor=(0.0, 1.005), ncol=min(k, 2), borderaxespad=0.0)
-        else:
-            ax.legend(frameon=False, fontsize=8.5, loc="lower right")
-    if annotate:
-        bottom, top = ax.get_ylim()
-        band = 1.3
-        ax.set_ylim(bottom + band, top)
-        import matplotlib.transforms as mtransforms
-        trans = mtransforms.blended_transform_factory(ax.transAxes, ax.transData)
-        ax.text(0.02, bottom + band * 0.5, annotate, transform=trans, fontsize=8,
-                va="center", ha="left",
-                bbox=dict(boxstyle="round,pad=0.35", fc="white", ec="#cccccc"))
+        ax.legend(frameon=False, fontsize=8.5, loc="lower right")
     style(ax)
-    if caption:
-        frac = min(0.34, 0.05 * (1 + len(caption) // 150))
-        fig.tight_layout(rect=[0, frac, 1, 1])
-        fig.text(0.5, frac * 0.92, caption, ha="center", va="top", fontsize=8.5, wrap=True)
     return save(fig, outdir, name)
 
 
@@ -411,9 +362,8 @@ def balance_as_percent_of_floor(series, floor_label):
     return out
 
 
-def draw_rmse_compression(leads, series, outdir, name, title, crossing_note=None,
-                          balance_percent=False, rmse_bands=None, agreement=None,
-                          agreement_of=("", "")):
+def draw_rmse_compression(leads, series, outdir, name, title,
+                          balance_percent=False, rmse_bands=None, agreement=None):
     if not leads or not series:
         print(f"  skipped {name} (no data)")
         return None
@@ -430,22 +380,11 @@ def draw_rmse_compression(leads, series, outdir, name, title, crossing_note=None
         axB.plot(leads, bal, "-", color=col, marker=mk, ms=7, lw=2,
                  mec="white", mew=1, label=lab, zorder=5)
     axR.axhline(0, color="#888", lw=1, ls=":")
-    axR.set_title("RMSE degradation vs fp32  (headline variables)",
+    axR.set_title("RMSE degradation vs unquantised  (headline variables)",
                   fontsize=11.5, fontweight="bold", pad=24 if agreement else None)
     axR.set_ylabel("RMSE degradation (%)")
-    if agreement:
-        blend = mtransforms.blended_transform_factory(axR.transData, axR.transAxes)
-        for L, (k, tot) in zip(leads, agreement):
-            axR.text(L, 1.012, f"{k}/{tot}", transform=blend, ha="center", va="bottom",
-                     fontsize=8.5, color="#444", fontweight="bold")
     note_lines = []
     if rmse_bands:
-        note_lines.append("band = 95% moving-block bootstrap CI on the pooled "
-                          "degradation  (2000 resamples, block = 4 inits ~ 1 month)")
-        a, b = agreement_of
-        if agreement and a and b:
-            note_lines.append(f"n/N above = initialisations (of {agreement[0][1]}) where "
-                              f"{a} is worse than {b}")
         lo, hi = axR.get_ylim()
         axR.set_ylim(lo, hi + 0.06 * (hi - lo))
     axB.set_yscale("log")
@@ -468,36 +407,6 @@ def draw_rmse_compression(leads, series, outdir, name, title, crossing_note=None
         for s in ("top", "right"):
             ax.spines[s].set_visible(False)
     axR.legend(frameon=False, fontsize=9, loc="upper right")
-    if len(series) >= 2 and len(leads) >= 2:
-        crossing_note = _cap(crossing_note)
-        cross = next((k for k in range(len(leads))
-                      if series[0][1][k] < series[1][1][k]), None)
-        if CAPTIONS_ON_FIGURE and cross is not None and cross > 0:
-            x_last, x_prev = leads[cross], leads[cross - 1]
-            y_floor = series[0][1][cross]
-            ymin, ymax = axR.get_ylim()
-            pad = 0.24 * (ymax - ymin)
-            axR.set_ylim(ymin - pad, ymax)
-            label = f"from {x_last}h onward: the floor scores better on RMSE"
-            if crossing_note:
-                label += f"\n{crossing_note}"
-            axR.annotate(
-                label,
-                xy=(x_last, y_floor), xytext=(x_prev + 0.5 * (x_last - x_prev), ymin - 0.55 * pad),
-                ha="center", va="center", fontsize=8.5,
-                arrowprops=dict(arrowstyle="->", color="#777777", lw=1.0,
-                                connectionstyle="arc3,rad=0.15"),
-                bbox=dict(boxstyle="round,pad=0.35", fc="white", ec="#cccccc"), zorder=6)
-        elif crossing_note:
-            ymin, ymax = axR.get_ylim()
-            pad = 0.24 * (ymax - ymin)
-            axR.set_ylim(ymin - pad, ymax)
-            axR.annotate(
-                crossing_note,
-                xy=(0.5, 0.0), xycoords="axes fraction",
-                xytext=(0.5, 0.055), textcoords="axes fraction",
-                ha="center", va="bottom", fontsize=8.5,
-                bbox=dict(boxstyle="round,pad=0.35", fc="white", ec="#cccccc"), zorder=6)
     fig.suptitle(title, fontsize=11.5, fontweight="bold", y=1.02)
     if note_lines:
         fig.tight_layout(rect=(0, 0.045 * len(note_lines), 1, 1))
@@ -551,7 +460,7 @@ def n_inits_of(results_csv):
     return max(vals) if vals else None
 
 
-def draw_lead_divergence(data, outdir, name, title, caption=""):
+def draw_lead_divergence(data, outdir, name, title):
     if not data["models"]:
         print(f"  skipped {name} (no model series)")
         return None
@@ -569,9 +478,7 @@ def draw_lead_divergence(data, outdir, name, title, caption=""):
     ax.set_title(title, fontsize=11.5, fontweight="bold")
     ax.legend(frameon=False, fontsize=9)
     style(ax)
-    fig.tight_layout(rect=(0.0, 0.16 if caption else 0.0, 1.0, 1.0))
-    if caption:
-        fig.text(0.5, 0.05, caption, ha="center", va="center", fontsize=8.5, wrap=True)
+    fig.tight_layout()
     return save(fig, outdir, name)
 
 
@@ -636,7 +543,7 @@ def endpoint_reversals(data, endpoint_a, endpoint_b, ref=1.0):
     return out
 
 
-def draw_endpoint_forest(data, outdir, name, title, endpoint_a, endpoint_b, caption=""):
+def draw_endpoint_forest(data, outdir, name, title, endpoint_a, endpoint_b):
     if not data["labels"]:
         print(f"  skipped {name} (no pairs common to both endpoints)")
         return None
@@ -657,25 +564,17 @@ def draw_endpoint_forest(data, outdir, name, title, endpoint_a, endpoint_b, capt
         _draw_strips(ax, d.get("samples"), y, col, width=0.34, marker=mk, rng=srng)
         ax.scatter(d["ratio"], y, s=62, marker=mk, zorder=5,
                    color=col, edgecolor=col, linewidth=1.4, label=e)
-    for i in flips:
-        ax.annotate("reversal", (max(a["ratio"][i], b["ratio"][i]), i),
-                    textcoords="offset points", xytext=(9, -3),
-                    fontsize=7.5, color=C["warn"], fontweight="bold")
     ax.axvline(1.0, color="#444", lw=0.9, ls="--", zorder=1)
     ax.set_xscale("log")
     ax.set_yticks(y)
     ax.set_yticklabels(data["labels"], fontsize=7.5)
     ax.invert_yaxis()
-    ax.set_xlabel("physics-guided advantage  (log)\n>1 = physics better")
+    ax.set_xlabel("physics-guided advantage  (log)")
     ax.set_title(title, fontsize=11.5, fontweight="bold")
     ax.legend(frameon=False, fontsize=8.5, loc="lower right", title="endpoint",
               title_fontsize=8.5)
     style(ax)
-    if caption:
-        fig.tight_layout(rect=(0.0, 0.15, 1.0, 1.0))
-        fig.text(0.5, 0.055, caption, ha="center", va="center", fontsize=8.2, wrap=True)
-    else:
-        fig.tight_layout()
+    fig.tight_layout()
     return save(fig, outdir, name)
 
 
@@ -882,7 +781,7 @@ def _draw_strips(ax, samples, ypos, colour, width, rng=None, marker="o", alpha=0
                                    rng=rng, dim=True)
 
 
-def draw_additivity(rows, outdir, name, title, caption="", broken=(), tol=0.2, faint=(),
+def draw_additivity(rows, outdir, name, title, tol=0.2, faint=(),
                     wide=False, boxes=False):
     if not rows:
         print(f"  skipped {name} (no additivity CSVs found)")
@@ -926,21 +825,15 @@ def draw_additivity(rows, outdir, name, title, caption="", broken=(), tol=0.2, f
                            zorder=4, alpha=alpha,
                            label=bucket if (first and not dim) else None)
             first = first and dim
-            if not dim:
-                ax.annotate(f"{r['n_ok']}/{r['n']}", (at, i), fontsize=6.8, color=col,
-                            textcoords="offset points", xytext=(6, -2.5), va="center")
 
-    labels = []
-    for m, s in cells:
-        mark = "   << allocation reverses" if (m, s) in set(broken) else ""
-        labels.append(f"{m}  {s}{mark}")
+    # `broken` is still accepted so the call sites stay valid, but the reversal is no
+    # longer marked on the axis -- it is a result, and results belong in the caption.
+    labels = [f"{m}  {s}" for m, s in cells]
     ax.set_xscale("log")
     ax.set_yticks(range(len(cells)))
     ax.set_yticklabels(labels, fontsize=8.5)
     ax.invert_yaxis()
-    ax.set_xlabel("additivity ratio   sum of one-at-a-time deltas / full-quantisation delta  (log)\n"
-                  f"1.0 = perfectly additive;  >1 = surrogate OVER-predicts damage;  "
-                  f"shaded = +/-{tol:.0%};  n/N = metrics within tolerance")
+    ax.set_xlabel("additivity ratio   sum of one-at-a-time deltas / full-quantisation delta  (log)")
     ax.set_title(title, fontsize=11.5, fontweight="bold", pad=22 if wide else None)
     if wide:
         ax.legend(frameon=False, fontsize=8.5, ncol=len(layout), loc="lower left",
@@ -949,11 +842,7 @@ def draw_additivity(rows, outdir, name, title, caption="", broken=(), tol=0.2, f
         ax.legend(frameon=False, fontsize=8.5, loc="lower right", title="metric class",
                   title_fontsize=8.5)
     style(ax)
-    if caption:
-        fig.tight_layout(rect=(0.0, 0.17, 1.0, 1.0))
-        fig.text(0.5, 0.06, caption, ha="center", va="center", fontsize=8.2, wrap=True)
-    else:
-        fig.tight_layout()
+    fig.tight_layout()
     return save(fig, outdir, name)
 
 
@@ -1038,7 +927,7 @@ def _ols_slope(xs, ys):
     return sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / sxx
 
 
-def draw_lead_slopes(data, outdir, name, title, caption=""):
+def draw_lead_slopes(data, outdir, name, title):
     rows = [(m, r) for m in _XMODELS for r in data.get(m, [])]
     if not rows:
         print(f"  skipped {name} (no pairs with an RMSE twin)")
@@ -1055,17 +944,10 @@ def draw_lead_slopes(data, outdir, name, title, caption=""):
     ax.set_yticklabels([f"{m}  {r['pair']}" + ("   [declared]" if r["declared"] else "")
                         for m, r in rows], fontsize=8)
     ax.invert_yaxis()
-    ax.set_xlabel("log-log slope of physics advantage vs lead, BALANCE axis\n"
-                  "<0 = advantage shrinks with lead;  >0 = it grows;  "
-                  "ringed = the same pair fig06 reports (fig06 scores the composite "
-                  "endpoint, so its slope differs)")
+    ax.set_xlabel("log-log slope of physics advantage vs lead, BALANCE axis")
     ax.set_title(title, fontsize=11.5, fontweight="bold")
     style(ax)
-    if caption:
-        fig.tight_layout(rect=(0.0, 0.17, 1.0, 1.0))
-        fig.text(0.5, 0.06, caption, ha="center", va="center", fontsize=8.2, wrap=True)
-    else:
-        fig.tight_layout()
+    fig.tight_layout()
     return save(fig, outdir, name)
 
 
@@ -1212,23 +1094,33 @@ def draw_transfer_residual_inset(ax, series, loc=(0.55, 0.115, 0.42, 0.27)):
         if not len(vals):
             continue
         ins.text(0.015, i + 0.30, label, transform=ins.get_yaxis_transform(),
-                 fontsize=6.5, color=colour, ha="left", va="bottom", zorder=6)
+                 fontsize=8.5, color=colour, ha="left", va="bottom", zorder=6)
     ins.set_yticks([])
     ins.set_ylim(-0.5, len(series) - 0.05)
-    ins.tick_params(axis="x", labelsize=6.5, length=2)
-    ins.set_xlabel("log$_{10}$(measured / predicted)", fontsize=6.5, labelpad=1)
+    ins.tick_params(axis="x", labelsize=8.0, length=2)
+    ins.set_xlabel("log$_{10}$(measured / predicted)", fontsize=8.5, labelpad=1)
     ins.patch.set_alpha(0.92)
     for side in ("top", "right"):
         ins.spines[side].set_visible(False)
     return ins
 
 
-def prepare_transfer(configs_csv, results_csv, axis, normalise=False):
+def prepare_transfer(configs_csv, results_csv, axis, normalise=False, exclude_guides=()):
+    """Predicted (allocator) vs measured (harness) for one axis, joined on `tag`.
+
+    `exclude_guides` DROPS ARMS THAT HAVE NO PREDICTION TO TEST, by the `guide` column of the
+    MEASURED side. The random draws are the case this exists for: they are matched-budget
+    controls rather than allocator outputs, so no additive-surrogate prediction was ever made
+    for them. Left in, their placeholder value is silently discarded by the log fit and the
+    figure is then computed on a different set of configs from the one it draws."""
     pred = _merge_by_tag(configs_csv)
     meas = _merge_by_tag(results_csv)
     refs = _floor_reference_tags(pred) if normalise else {}
+    drop = {g for g in exclude_guides if g}
     tags, xs, ys = [], [], []
     for t in sorted(set(pred) & set(meas)):
+        if drop and meas[t].get("guide", "") in drop:
+            continue
         try:
             x, y = float(pred[t][axis]), float(meas[t][axis])
         except (KeyError, ValueError):
@@ -1255,7 +1147,9 @@ def prepare_transfer(configs_csv, results_csv, axis, normalise=False):
            "residual": _transfer_residual(xs, ys, ok),
            "fit_tags": [t for t, keep in zip(tags, ok) if keep]}
     if normalise:
-        raw = prepare_transfer(configs_csv, results_csv, axis)
+        # Same exclusions, or the raw-magnitude fit reported beside the normalised one would
+        # be computed over a different set of configurations.
+        raw = prepare_transfer(configs_csv, results_csv, axis, exclude_guides=exclude_guides)
         out["rho_raw"], out["slope_raw"] = raw["rho"], raw["slope"]
     return out
 
@@ -1279,14 +1173,13 @@ def prepare_cost_scope(results_csv, tags=None):
     return out
 
 
-def draw_cost_scope(points, outdir, name, title, caption="", ceiling_tag="ceiling"):
+def draw_cost_scope(points, outdir, name, title, ceiling_tag="ceiling"):
     if not points:
         print(f"  skipped {name} (no cost points)")
         return None
-    ceil = next((p for p in points if p["tag"] == ceiling_tag), None)
     fig, axes = plt.subplots(1, 2, figsize=(12.4, 5.2))
-    for ax, key, xlabel in ((axes[0], "size_gb", "model size (GB, lower = better)"),
-                            (axes[1], "latency", "latency (s/step, lower = better)")):
+    for ax, key, xlabel in ((axes[0], "size_gb", "model size (GB)"),
+                            (axes[1], "latency", "latency (s/step)")):
         plotted = [p for p in points if p["tag"] != ceiling_tag]
         xs = [p[key] for p in plotted]
         tol = 0.02 * (max(xs) - min(xs)) if len(xs) > 1 else 0.0
@@ -1301,15 +1194,6 @@ def draw_cost_scope(points, outdir, name, title, caption="", ceiling_tag="ceilin
                 ax.scatter(p[key], max(p["balance"], 1e-3), s=64, zorder=4,
                            edgecolor="white", linewidth=1.0,
                            color=C["physics"] if phys else C["rmse"])
-                ax.annotate(p["tag"].replace("W8A8_", "").replace("W4W8_", "W4:"),
-                            (p[key], max(p["balance"], 1e-3)), textcoords="offset points",
-                            xytext=(7, 4 - 13 * rank), fontsize=7)
-        if ceil:
-            ax.axvline(ceil[key], color="#444", ls=":", lw=1.3, zorder=1)
-            ax.axhline(max(ceil["balance"], 1e-3), color="#444", ls=":", lw=1.3, zorder=1)
-            ax.text(ceil[key], 0.55, " bf16 ceiling", rotation=90, fontsize=8, color="#444",
-                    va="center", ha="left",
-                    transform=ax.get_xaxis_transform())
         ax.set_yscale("log")
         ax.set_xlabel(xlabel)
         ax.set_ylabel("measured balance distortion @120h  (SVR, log)")
@@ -1317,10 +1201,15 @@ def draw_cost_scope(points, outdir, name, title, caption="", ceiling_tag="ceilin
         ax.set_axisbelow(True)
         for s in ("top", "right"):
             ax.spines[s].set_visible(False)
+    from matplotlib.lines import Line2D
+    axes[0].legend(handles=[
+        Line2D([], [], color=C["physics"], marker="o", ls="", mec="white",
+               label="physics-guided"),
+        Line2D([], [], color=C["rmse"], marker="o", ls="", mec="white",
+               label="RMSE-guided / probe")],
+        frameon=False, fontsize=9, loc="upper right")
     fig.suptitle(title, fontsize=12.5, fontweight="bold", y=1.01)
-    fig.tight_layout(rect=[0, 0.16 if caption else 0.0, 1, 0.99])
-    if caption:
-        fig.text(0.5, 0.055, caption, ha="center", va="top", fontsize=8.5, wrap=True)
+    fig.tight_layout(rect=[0, 0.0, 1, 0.99])
     return save(fig, outdir, name)
 
 
@@ -1426,7 +1315,7 @@ def prepare_rmse_lead_families(pt, tags, leads, variables, ref="FP32", per_init=
     return out
 
 
-def draw_rmse_lead_grid(cells, leads, outdir, name, title, caption=""):
+def draw_rmse_lead_grid(cells, leads, outdir, name, title):
     if not cells:
         print(f"  skipped {name} (no cells)")
         return None
@@ -1481,19 +1370,13 @@ def draw_rmse_lead_grid(cells, leads, outdir, name, title, caption=""):
             for s in ("top", "right"):
                 ax.spines[s].set_visible(False)
     fig.suptitle(title, fontsize=12.5, fontweight="bold", y=1.01)
-    n_lines = (max(1, math.ceil(len(caption) / max(1.0, 23.0 * fig.get_figwidth())))
-               if caption else 0)
-    cap_in = 0.17 * n_lines + 0.30            # caption text + legend row, in inches
-    frac = min(0.34, cap_in / fig.get_figheight())
+    frac = min(0.34, 0.30 / fig.get_figheight())     # legend row, in inches
     fig.tight_layout(rect=[0, frac, 1, 0.99])
     handles = list(seen.values())
     if handles:
         fig.legend(handles, list(seen.keys()), frameon=False, fontsize=9,
                    loc="lower center", ncol=min(len(handles), 6),
                    bbox_to_anchor=(0.5, frac - 0.30 / fig.get_figheight()))
-    if caption:
-        fig.text(0.5, frac - 0.34 / fig.get_figheight(), caption,
-                 ha="center", va="top", fontsize=8.5, wrap=True)
     return save(fig, outdir, name)
 
 
@@ -1503,7 +1386,7 @@ SPECTRAL_FAMILY = "power spectrum"
 SPECTRAL_VARS = (("Z500", "geopotential_500"), ("U500", "u_component_of_wind_500"))
 SPECTRAL_SERIES = (("uniform W8A8 (floor)", "W8A8_floor", C["rmse"]),
                    ("physics-protected (span1)", "W8A8_span1", C["physics"]))
-SPECTRAL_SERIES_WITH_REF = (("fp32 (reference)", "FP32", "#000000", "-"),
+SPECTRAL_SERIES_WITH_REF = (("unquantised (reference)", "FP32", "#000000", "-"),
                             ("uniform W8A8 (all-int8)", "W8A8_floor", C["rmse"], "--"),
                             ("physics-protected (span1)", "W8A8_span1", C["physics"], "-"))
 
@@ -1559,7 +1442,7 @@ def prepare_balance_profile(path, series=SPECTRAL_SERIES_WITH_REF):
     return out
 
 
-def draw_balance_profile(series, outdir, name, title, caption=""):
+def draw_balance_profile(series, outdir, name, title):
     """Absolute-severity companion to the SVR figures: the diagnostic in its own units."""
     if not series:
         print(f"  skipped {name} (no balance-profile extract)")
@@ -1577,23 +1460,16 @@ def draw_balance_profile(series, outdir, name, title, caption=""):
     ax.set_yticklabels([f"{int(v)}" for v in levels], fontsize=8)
     ax.set_ylabel("pressure level (hPa)")
     ax.set_xlabel("ageostrophic / geostrophic wind ratio  @120 h")
-    ax.text(0.5, -0.085, "band = 95% moving-block bootstrap CI on the mean  "
-            "(2000 resamples, monthly blocks)", transform=ax.transAxes,
-            ha="center", va="top", fontsize=8.5, color="#444")
     ax.set_title(title, fontsize=11.5, fontweight="bold")
     ax.legend(frameon=False, fontsize=9.5, loc="lower right")
     style(ax)
     ax.grid(True, which="both", ls="-", lw=0.4, color="#ececec")
     fig.tight_layout()
-    if caption:
-        frac = min(0.34, 0.055 * (1 + len(caption) // 150))
-        fig.subplots_adjust(bottom=frac)
-        fig.text(0.5, frac * 0.5, caption, ha="center", va="top", fontsize=8.5, wrap=True)
     return save(fig, outdir, name)
 
 
-def draw_spectral_test(data, outdir, name, title, caption=""):
-    """Two log-x panels of PSD(config)/PSD(fp32). Returns the path, or None."""
+def draw_spectral_test(data, outdir, name, title, model=None):
+    """Two log-x panels of PSD(config)/PSD(unquantised). Returns the path, or None."""
     panels = data.get("panels") or []
     if not panels:
         print(f"  skipped {name} (no spectral extract -- run run_figure_pt_extracts.py; "
@@ -1605,27 +1481,15 @@ def draw_spectral_test(data, outdir, name, title, caption=""):
             ax.plot(p["k"], ratio, "-", color=colour, lw=2, label=label)
         ax.axhline(1.0, color="#888", ls=":", lw=1)
         ax.set_xscale("log")
-        ax.set_xlabel("wavenumber k  (large scale -> small scale)")
-        ax.set_ylabel(f"PSD(config) / PSD(fp32)   [{p['var_label']}]")
+        ax.set_xlabel("wavenumber k")
+        ax.set_ylabel(f"PSD(config) / PSD(unquantised)   [{p['var_label']}]")
         ax.set_title(p["var_label"], fontsize=11, fontweight="bold")
         style(ax)
         ax.grid(True, which="both", ls="-", lw=0.4, color="#ececec")
-        if p["plain"] is not None and p["grad"] is not None:
-            same_sign = p["plain"] * p["grad"] > 0
-            tail = (f"  (x{abs(p['amplification']):.0f})"
-                    if same_sign and p["amplification"] is not None
-                    else "  (opposite sign)")
-            ax.annotate(f"floor: plain {100 * p['plain']:+.1f}%,  "
-                        f"$k^2$-weighted {100 * p['grad']:+.1f}%{tail}",
-                        xy=(0.02, 0.02), xycoords="axes fraction", fontsize=8.5,
-                        color="#444")
-    axes[0][0].legend(frameon=False, fontsize=9, loc="upper left")
+    axes[0][0].legend(frameon=False, fontsize=9, loc="upper left",
+                      title=model, title_fontsize=9)
     fig.suptitle(title, fontsize=11.5, fontweight="bold", y=1.0)
     fig.tight_layout(rect=[0, 0, 1, 0.95])
-    if caption:
-        frac = min(0.34, 0.055 * (1 + len(caption) // 150))
-        fig.subplots_adjust(bottom=frac)
-        fig.text(0.5, frac * 0.5, caption, ha="center", va="top", fontsize=8.5, wrap=True)
     return save(fig, outdir, name)
 
 
@@ -1637,6 +1501,13 @@ FRONTIER_A_RMSE = ("W8A8_floor", "W8A8_rmse_knee", "W8A8_rmse_span1", "W8A8_rmse
 FRONTIER_B_PHYS = ("W4W8_floor", "W4W8_knee", "W4W8_span1", "W4W8_span2", "W4W8_span3")
 FRONTIER_B_RMSE = ("W4W8_floor", "W4W8_rmse_span1", "W4W8_rmse_span2", "W4W8_rmse_span3")
 FRONTIER_RANDOM = ("W8A8_rand_0", "W8A8_rand_1", "W8A8_rand_2", "W8A8_rand_3")
+# The positional and over-funded-RMSE arms were measured for BOTH floors but were never
+# listed in any frontier tuple, so neither panel drew them. They are controls, not
+# scalarisation points, so they are scattered rather than joined into a frontier line.
+FRONTIER_A_PROTECT = ("W8A8_protect_io",)
+FRONTIER_B_PROTECT = ("W4W8_protect_io",)
+FRONTIER_A_RMSEUP = ("W8A8_rmseup_knee", "W8A8_rmseup_span1")
+FRONTIER_B_RMSEUP = ("W4W8_rmseup_span1",)
 FRONTIER_PROBES = ("W8A8_probe_divergent", "W8A8_probe_rmse_favoured")
 
 
@@ -1672,21 +1543,25 @@ def prepare_allocation_frontier(results_csv, axis="balance", exclude=()):
     return {"axis": axis, "excluded_tags": sorted(exclude),
             "panels": [
                 {"title": "W8A8 family  (8-bit backbone)", "logx": False,
-                 "xlabel": "allocation cost  (share of quantisable Linear FLOPs at bf16;  "
-                           "0 = all-W8A8,  1 = all-bf16)",
+                 "xlabel": "allocation cost  (share of quantisable Linear FLOPs left "
+                           "unquantised;  0 = all W8A8,  1 = none quantised)",
                  "physics": series(FRONTIER_A_PHYS), "rmse": series(FRONTIER_A_RMSE),
                  "random": series(FRONTIER_RANDOM),
                  "probe": series(FRONTIER_PROBES, need_cost=False),
+                 "protect_io": series(FRONTIER_A_PROTECT),
+                 "rmseup": series(FRONTIER_A_RMSEUP),
                  "excluded": dropped(FRONTIER_A_PHYS + FRONTIER_A_RMSE)},
                 {"title": "W4W8 family  (4-bit backbone)", "logx": True,
                  "xlabel": "allocation cost  (model weight bytes, log;  6.3e8 = all-W4)",
                  "physics": series(FRONTIER_B_PHYS), "rmse": series(FRONTIER_B_RMSE),
                  "random": [], "probe": [],
+                 "protect_io": series(FRONTIER_B_PROTECT),
+                 "rmseup": series(FRONTIER_B_RMSEUP),
                  "excluded": dropped(FRONTIER_B_PHYS + FRONTIER_B_RMSE)}],
             "ceiling": (series(("ceiling",)) or [(None, None)])[0][1]}
 
 
-def draw_allocation_frontier(data, outdir, name, title, caption="", legend_loc="upper right"):
+def draw_allocation_frontier(data, outdir, name, title, legend_loc="upper right"):
     from matplotlib.lines import Line2D
     panels = [p for p in data.get("panels", []) if p["physics"] or p["rmse"]]
     if not panels:
@@ -1708,6 +1583,12 @@ def draw_allocation_frontier(data, outdir, name, title, caption="", legend_loc="
             ax.scatter(x, y, color=C["accent"], marker="^", s=70, ec="white", lw=1, zorder=4)
         for _, y in p["probe"]:
             ax.scatter(0.03, y, color=C["warn"], marker="X", s=80, ec="white", lw=0.8, zorder=6)
+        for x, y in p.get("protect_io", []):
+            ax.scatter(x, y, color=C["neutral"], marker="D", s=70, ec="white", lw=1,
+                       zorder=6)
+        for x, y in p.get("rmseup", []):
+            ax.scatter(x, y, facecolors="none", edgecolors=C["rmse"], marker="s", s=95,
+                       lw=1.6, zorder=6)
         if p["logx"]:
             ax.set_xscale("log")
         ax.set_yscale("log")
@@ -1715,7 +1596,7 @@ def draw_allocation_frontier(data, outdir, name, title, caption="", legend_loc="
             ax.axhline(data["ceiling"], color="#888", ls=":", lw=1.3, zorder=1)
         ax.set_title(p["title"], fontsize=12, fontweight="bold")
         ax.set_xlabel(p["xlabel"], fontsize=9)
-        ax.set_ylabel(f"measured {data['axis']} distortion @120 h  (SVR, log; lower = better)")
+        ax.set_ylabel(f"measured {data['axis']} distortion @120 h  (SVR, log)")
         style(ax)
         ax.grid(True, which="both", ls="-", lw=0.4, color="#e8e8e8")
     handles = [Line2D([], [], color=C["physics"], marker="o", lw=2, mec="white",
@@ -1725,6 +1606,15 @@ def draw_allocation_frontier(data, outdir, name, title, caption="", legend_loc="
                Line2D([], [], color=C["accent"], marker="^", ls="", mec="white",
                       label="random (control)"),
                Line2D([], [], color=C["warn"], marker="X", ls="", label="probe (control)")]
+    if any(p.get("protect_io") for p in panels):
+        handles.append(Line2D([], [], color=C["neutral"], marker="D", ls="", mec="white",
+                              label="positional (control)"))
+    if any(p.get("rmseup") for p in panels):
+        handles.append(Line2D([], [], color=C["rmse"], marker="s", ls="", mfc="none",
+                              mew=1.6, label="over-funded RMSE (anticontrol)"))
+    if data.get("ceiling"):
+        handles.append(Line2D([], [], color="#888", ls=":", lw=1.3,
+                              label="unquantised ceiling"))
     if any(p.get("excluded") for p in panels):
         handles.append(Line2D([], [], color=C["physics"], marker="o", ls="", mfc="none",
                               mew=1.6, label="off-scalarisation (excluded)"))
@@ -1733,10 +1623,6 @@ def draw_allocation_frontier(data, outdir, name, title, caption="", legend_loc="
                       borderaxespad=pad)
     fig.suptitle(title, fontsize=13, fontweight="bold", y=0.985)
     fig.tight_layout(rect=[0, 0, 1, 0.93])
-    if caption:
-        frac = min(0.34, 0.055 * (1 + len(caption) // 150))
-        fig.subplots_adjust(bottom=frac)
-        fig.text(0.5, frac * 0.5, caption, ha="center", va="top", fontsize=8.5, wrap=True)
     return save(fig, outdir, name)
 
 
@@ -1760,7 +1646,7 @@ def prepare_per_variable_rho(path, jackknife_path=None):
     return sorted(out, key=lambda d: d["rho"])
 
 
-def draw_per_variable_rho(rows, outdir, name, title, caption=""):
+def draw_per_variable_rho(rows, outdir, name, title):
     if not rows:
         print(f"  skipped {name} (no per-variable rho CSV)")
         return None
@@ -1790,10 +1676,6 @@ def draw_per_variable_rho(rows, outdir, name, title, caption=""):
                               label="leave-one-config-out")],
               frameon=False, fontsize=9, loc="lower right")
     fig.tight_layout()
-    if caption:
-        frac = min(0.30, 0.042 * (1 + len(caption) // 150))
-        fig.subplots_adjust(bottom=frac)
-        fig.text(0.5, frac * 0.72, caption, ha="center", va="top", fontsize=8.5, wrap=True)
     return save(fig, outdir, name)
 
 
@@ -1856,11 +1738,7 @@ def draw_reproducibility_floor(data, outdir, name, title):
         ax.set_ylim(-0.55, 0.75)
         ax.set_yticks([])
         ax.set_xlabel(f"{a} distortion (SVR, log)")
-        ax.set_title(f"{a}   -   {n_below}/{len(info['cells'])} cells below the floor",
-                     fontsize=11, fontweight="bold")
-        # .4f prints 0.0000 for Stormer's 4.6e-05 floor; .3g keeps both models legible.
-        ax.annotate(f"numerical-noise floor p95 = {info['p95']:.3g}", xy=(info["p95"], 0.60),
-                    xytext=(4, 0), textcoords="offset points", fontsize=8.5, color="#444")
+        ax.set_title(f"{a}", fontsize=11, fontweight="bold")
         style(ax)
         ax.grid(True, axis="x", which="both", ls="-", lw=0.4, color="#ececec")
     from matplotlib.lines import Line2D
@@ -1899,7 +1777,7 @@ def prepare_anticontrol(balance_csv, composite_csv, balance_labels_csv=None,
     return out
 
 
-def draw_anticontrol(rows, outdir, name, title, caption=""):
+def draw_anticontrol(rows, outdir, name, title):
     if not rows:
         print(f"  skipped {name} (no anticontrol CSVs)")
         return None
@@ -1924,16 +1802,12 @@ def draw_anticontrol(rows, outdir, name, title, caption=""):
             _draw_strips(ax, [r.get("samples")], [i], colour, width=0.34, rng=rng)
             ax.scatter([r["ratio"]], [i], s=64, marker="o", color=colour,
                        edgecolor="white", linewidth=1.0, zorder=5)
-            if r["excess"] is not None:
-                ax.annotate(f"+{r['excess']:.0f}% budget", xy=(r["ratio"], i),
-                            xytext=(0, -14), textcoords="offset points", ha="center",
-                            fontsize=7.5, color="#666")
         ax.axvline(1.0, color="#444", lw=1.1, zorder=1)
         ax.set_xscale("log")
         ax.set_yticks(range(len(pairs)))
         ax.set_yticklabels(pairs, fontsize=9)
         ax.set_ylim(-0.7, len(pairs) - 0.3)
-        ax.set_xlabel("physics-guided advantage  (>1 = physics less distorted, log)")
+        ax.set_xlabel("physics-guided advantage  (log)")
         ax.set_title(ep, fontsize=11, fontweight="bold")
         ax.xaxis.set_major_locator(mticker.LogLocator(base=10.0, subs=(1.0, 2.0, 5.0),
                                                       numticks=12))
@@ -1943,10 +1817,6 @@ def draw_anticontrol(rows, outdir, name, title, caption=""):
         style(ax)
     fig.suptitle(title, fontsize=12, fontweight="bold", y=0.995)
     fig.tight_layout(rect=[0, 0, 1, 0.95])
-    if caption:
-        frac = min(0.4, 0.062 * (1 + len(caption) // 140))
-        fig.subplots_adjust(bottom=frac)
-        fig.text(0.5, frac * 0.5, caption, ha="center", va="top", fontsize=8.5, wrap=True)
     return save(fig, outdir, name)
 
 
@@ -1975,7 +1845,7 @@ def prepare_cross_quantiser(path, lead=120, axis="balance_share", top_n=8):
             "axis": axis, "lead": lead}
 
 
-def draw_cross_quantiser(data, outdir, name, title, caption=""):
+def draw_cross_quantiser(data, outdir, name, title):
     if not data or not data.get("groups"):
         print(f"  skipped {name} (no cross_scheme.csv)")
         return None
@@ -1998,10 +1868,6 @@ def draw_cross_quantiser(data, outdir, name, title, caption=""):
     ax.legend(frameon=False, fontsize=9, ncol=len(schemes), loc="lower right")
     style(ax)
     fig.tight_layout()
-    if caption:
-        frac = min(0.4, 0.06 * (1 + len(caption) // 140))
-        fig.subplots_adjust(bottom=frac)
-        fig.text(0.5, frac * 0.55, caption, ha="center", va="top", fontsize=8.5, wrap=True)
     return save(fig, outdir, name)
 
 
@@ -2044,26 +1910,23 @@ def prepare_scorecard(csv_path, card):
 
     leads = sorted({int(r["lead"]) for r in rows})
     schemes = list(dict.fromkeys(r["scheme"] for r in rows))
-    grid, floor = {}, {}
+    grid = {}
     for s in schemes:
         grid[s] = np.full((len(labels), len(leads)), np.nan)
-        floor[s] = np.zeros_like(grid[s], dtype=bool)
     for r in rows:
         i, j = int(r["order"]), leads.index(int(r["lead"]))
         try:
             grid[r["scheme"]][i, j] = float(r["pct_diff"])
         except ValueError:
             continue
-        floor[r["scheme"]][i, j] = _truthy(r["at_floor"])
-    n_measured = sum(1 for r in rows if _truthy(r.get("floor_measured")))
     return {"labels": labels, "blocks": [tuple(b) for b in blocks], "leads": leads,
-            "schemes": schemes, "grid": grid, "floor": floor,
-            "n_measured": n_measured, "n_cells": len(rows)}
+            "schemes": schemes, "grid": grid}
 
 
-def draw_scorecard(data, outdir, name, title, caption=""):
-    """Percent change versus FP32: rows = metrics, columns = leads, one panel per scheme."""
-    caption = _cap(caption)
+def draw_scorecard(data, outdir, name, title):
+    """Percent change versus the unquantised baseline: rows = metrics, columns = leads,
+    one panel per scheme. The `FP32` tag names the reference RUN, which on Aurora is a
+    bf16-autocast-backbone model, not fp32 -- hence the label."""
     if data is None:
         print(f"  skipped {name} (no scorecard rows)")
         return None
@@ -2076,7 +1939,7 @@ def draw_scorecard(data, outdir, name, title, caption=""):
 
     im = None
     for ax, s in zip(axes.flat, schemes):
-        g, fl = data["grid"][s], data["floor"][s]
+        g = data["grid"][s]
         im = ax.imshow(np.clip(g, -SCORECARD_VMAX, SCORECARD_VMAX), cmap=cmap,
                        vmin=-SCORECARD_VMAX, vmax=SCORECARD_VMAX, aspect="auto")
         for i in range(len(labels)):
@@ -2084,12 +1947,9 @@ def draw_scorecard(data, outdir, name, title, caption=""):
                 if np.isnan(g[i, j]):
                     continue
                 strong = abs(g[i, j]) > SCORECARD_VMAX * 0.6
-                ax.text(j, i - 0.10, scorecard_pct_text(g[i, j]), ha="center",
+                ax.text(j, i, scorecard_pct_text(g[i, j]), ha="center",
                         va="center", fontsize=6.4,
                         color="white" if strong else "#111")
-                if fl[i, j]:
-                    ax.plot(j, i + 0.29, marker="o", ms=1.9,
-                            color="white" if strong else "#333", lw=0)
         for _, start, stop in data["blocks"][:-1]:
             ax.axhline(stop - 0.5, color="#333", lw=0.9)
         for j in range(len(leads) - 1):
@@ -2103,24 +1963,9 @@ def draw_scorecard(data, outdir, name, title, caption=""):
 
     axes.flat[0].set_yticks(range(len(labels)))
     axes.flat[0].set_yticklabels(labels, fontsize=7.2)
-    last = axes.flat[-1]
-    for bname, start, stop in data["blocks"]:
-        last.text(len(leads) - 0.34, (start + stop - 1) / 2.0, bname, rotation=270,
-                  ha="left", va="center", fontsize=7.4, fontweight="bold",
-                  color="#444", clip_on=False)
-
     cb = fig.colorbar(im, ax=axes, shrink=0.55, pad=0.06,
-                      label=f"% change vs FP32  (red = larger, clipped at "
+                      label=f"% change vs unquantised  (red = larger, clipped at "
                             f"\u00b1{SCORECARD_VMAX:.0f}%)")
     cb.outline.set_visible(False)
     fig.suptitle(title, fontsize=11.5, fontweight="bold")
-    if data.get("n_measured"):
-        note = ("dot = mean shift within the measured numerical noise floor for that "
-                "metric and lead")
-        if data["n_measured"] < data.get("n_cells", 0):
-            note += ("   (floors exist for the registry metrics only; "
-                     f"{data['n_measured']} of {data['n_cells']} cells)")
-        fig.text(0.5, 0.012, note, ha="center", va="bottom", fontsize=7.6, color="#555")
-    if caption:
-        fig.text(0.5, -0.02, caption, ha="center", va="top", fontsize=8.5, wrap=True)
     return save(fig, outdir, name)

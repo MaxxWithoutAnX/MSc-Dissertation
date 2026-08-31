@@ -60,7 +60,7 @@ def _b_localisation_aurora(roots, outdir):
         return None
     data = fc.prepare_localisation(src, lead=120)
     return fc.draw_localisation(data, outdir, "fig03_localisation_aurora.png",
-                                "Aurora: distortion per layer group, by axis",
+                                "Aurora: distortion per layer group",
                                 120)
 
 
@@ -71,7 +71,7 @@ def _b_localisation_stormer(roots, outdir):
         return None
     data = fc.prepare_localisation(src, lead=120)
     return fc.draw_localisation(data, outdir, "figA03_localisation_stormer.png",
-                                "Stormer: distortion per layer group, by axis",
+                                "Stormer: distortion per layer group",
                                 120)
 
 
@@ -135,7 +135,7 @@ def _b_axis_decomposition_aurora(roots, outdir):
                                          r.rpath("harness_results_paired_dry_air_mass.csv"))
     return fc.draw_axis_decomposition(
         data, outdir, "figA04_axis_decomposition_aurora.png",
-        "Distortion decomposed into balance and conservation axes")
+        "Aurora: distortion decomposed by axis")
 
 
 def _b_axis_decomposition_stormer(roots, outdir):
@@ -144,7 +144,7 @@ def _b_axis_decomposition_stormer(roots, outdir):
                                          r.rpath("stormer_paired_dry_air_mass.csv"))
     return fc.draw_axis_decomposition(
         data, outdir, "figA05_axis_decomposition_stormer.png",
-        "Stormer: distortion decomposed into balance and conservation axes")
+        "Stormer: distortion decomposed by axis")
 
 
 # ------------------------------------------------------------------ axis robustness
@@ -173,11 +173,9 @@ def _b_axis_robustness(roots, outdir):
            else "across definitions")
     return fc.draw_dotplot(
         variants, series, outdir, "figA06_axis_robustness.png",
-        "Physics advantage under three consistency-axis definitions",
+        "Physics advantage under three axis definitions",
         "physics advantage  (x, log;  >1 = physics better)",
-        logx=True, refline=1.0,
-        annotate=f"span1 advantage ranges {rng}:\n"
-                 "the sign and order of magnitude are invariant, the point estimate is not")
+        logx=True, refline=1.0)
 
 
 # ------------------------------------------------------------------ activation blindness
@@ -216,14 +214,11 @@ def _b_activation_blindness(roots, outdir):
         ax.scatter(o, max(b, 1e-3), s=90,
                    color=fc.C["warn"] if g == "film" else fc.C["physics"],
                    edgecolor="white", zorder=3)
-        ax.annotate(g, (o, max(b, 1e-3)), textcoords="offset points", xytext=(7, 3),
-                    fontsize=8.5)
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_xlabel("activation outlier ratio  (the standard PTQ diagnostic, log)")
+    ax.set_xlabel("activation outlier ratio  (log)")
     ax.set_ylabel(f"measured physics damage @{lead}h  (SVR, log)")
-    ax.set_title("Activation outlier statistics versus physics damage, per layer group",
-                 fontsize=12, fontweight="bold")
+    ax.set_title("Activation outliers vs physics damage", fontsize=12, fontweight="bold")
     ax.grid(True, which="both", ls="-", lw=0.4, color="#ececec")
     fc.style(ax)
     return fc.save(fig, outdir, "figA07_activation_blindness.png")
@@ -258,13 +253,7 @@ def _b_calibration_drift(roots, outdir):
     ax.set_ylim(lim)
     ax.set_xlabel("activation outlier ratio, 10-step rollout (log)")
     ax.set_ylabel("activation outlier ratio, 28-step rollout (log)")
-    ax.set_title("Calibration statistics versus rollout depth",
-                 fontsize=12, fontweight="bold")
-    moved = int(np.sum(np.abs(y / x - 1) > 0.10))
-    ax.text(0.04, 0.94, f"rank-$\\rho$ = {rho:.3f}\nmedian ratio = {np.median(y/x):.3f}\n"
-                        f"{moved}/{len(x)} layers move >10%",
-            transform=ax.transAxes, fontsize=9, va="top",
-            bbox=dict(boxstyle="round,pad=0.4", fc="white", ec="#cccccc"))
+    ax.set_title("Calibration statistics vs rollout depth", fontsize=12, fontweight="bold")
     ax.grid(True, which="both", ls="-", lw=0.4, color="#ececec")
     fc.style(ax)
     return fc.save(fig, outdir, "figA08_calibration_drift.png")
@@ -299,12 +288,8 @@ def _b_replication_forest(roots, outdir):
     ax.set_yticks(y)
     ax.set_yticklabels(fc.label_with_n(d["labels"], d.get("samples")), fontsize=7.5)
     ax.invert_yaxis()
-    ax.set_xlabel("physics-guided advantage on max(balance, conservation)  (log)\n"
-                  ">1 = physics better")
-    ax.set_title("Effect sizes on both architectures\n"
-                 "Aurora: Swin U-Net + Perceiver, 0.25 deg   |   "
-                 "Stormer: plain ViT + adaLN, 1.40625 deg", fontsize=10.5,
-                 fontweight="bold")
+    ax.set_xlabel("physics-guided advantage on max(balance, conservation)  (log)")
+    ax.set_title("Effect sizes on both architectures", fontsize=11.5, fontweight="bold")
     fc.style(ax)
     return fc.save(fig, outdir, "fig05_replication_forest.png")
 
@@ -328,8 +313,7 @@ def _b_concentration(roots, outdir):
     ax.plot([0, 1], [0, 1], color="#999", lw=0.9, ls="--", label="uniform (no localisation)")
     ax.set_xlabel("fraction of layer groups, ordered most-damaging first")
     ax.set_ylabel(f"cumulative share of balance distortion @{lead}h")
-    ax.set_title("Cumulative share of physics damage by layer group, both models\n"
-                 "the shape replicates even though the named groups do not", fontsize=11,
+    ax.set_title("Cumulative share of physics damage by layer group", fontsize=11,
                  fontweight="bold")
     ax.legend(frameon=False, fontsize=8, loc="lower right")
     fc.style(ax)
@@ -343,19 +327,32 @@ _TRANSFER_AXES = (("balance", "balance"), ("conservation", "conservation"),
 def _b_surrogate_transfer(roots, outdir):
     a, s = roots["aurora"], roots["stormer"]
     sources = {
-        "Aurora": ([a.path("harness_configs_corrected.csv"),
+        # figA09_predicted_rebuilt.csv IS FIRST, so under earlier-wins _merge_by_tag it owns
+        # balance/conservation/standard/config for every tag it carries. It is the prediction
+        # recomputed from the config the harness ACTUALLY RAN, ungated -- see
+        # predicted_standard.py --from-results for the three defects that fixes (a
+        # manifest/run mismatch on 14 Aurora tags, eleven gate-censored zeros that log-log
+        # silently dropped, and a vintage drift). The manifests follow it so tags it omits
+        # still resolve, and the *_standard sidecars remain for the same reason.
+        "Aurora": ([a.rpath("figA09_predicted_rebuilt.csv"),
+                    a.path("harness_configs_corrected.csv"),
                     a.path("harness_configs_standard.csv")],
                    [a.rpath("harness_results.csv"), a.rpath("harness_axis_standard.csv")]),
-        "Stormer": ([s.path("stormer_harness_configs.csv"),
+        "Stormer": ([s.rpath("figA09_predicted_rebuilt.csv"),
+                     s.path("stormer_harness_configs.csv"),
                      s.path("stormer_harness_configs_standard.csv")],
                     [s.rpath("harness_results.csv"), s.rpath("harness_axis_standard.csv")]),
     }
+    # The random arms are matched-budget controls, not allocator outputs: no additive-surrogate
+    # prediction exists for them. See prepare_transfer's `exclude_guides` note.
+    EXCLUDE_GUIDES = ("random",)
     fig, axs = plt.subplots(1, len(_TRANSFER_AXES), figsize=(15.2, 5.4))
     drew = False
     for ax, (axis, label) in zip(axs, _TRANSFER_AXES):
         n_panel, resid = 0, []
         for model, (cfg, res) in sources.items():
-            d = fc.prepare_transfer(cfg, res, axis, normalise=True)
+            d = fc.prepare_transfer(cfg, res, axis, normalise=True,
+                                    exclude_guides=EXCLUDE_GUIDES)
             if len(d["tags"]) < 2:
                 continue
             drew = True
@@ -386,9 +383,7 @@ def _b_surrogate_transfer(roots, outdir):
     if not drew:
         plt.close(fig)
         return None
-    fig.suptitle("Predicted versus measured damage as a share of uniform-floor damage, "
-                 "both models\nslope 1 = calibrated in level;  slope < 1 = compressed",
-                 fontsize=11, fontweight="bold")
+    fig.suptitle("Predicted vs measured damage", fontsize=11, fontweight="bold")
     fig.tight_layout()
     return fc.save(fig, outdir, "figA09_surrogate_transfer.png")
 
@@ -487,16 +482,16 @@ REGISTRY: list = [
                build=_b_concentration,
                inputs=("ablation_analysis_ablations_W8A8/sensitivity.csv",
                        "ablation_analysis_ablation_W8A8/sensitivity.csv"),
-               title="Cumulative share of physics damage by layer group, both models"),
+               title="Cumulative share of physics damage by layer group"),
     FigureSpec(id="localisation_aurora", number=3, section="main", model="aurora",
                build=_b_localisation_aurora,
                inputs=("ablation_analysis_ablations_W8A8/sensitivity.csv",),
-               title="Aurora: distortion per layer group, by axis"),
+               title="Aurora: distortion per layer group"),
     FigureSpec(id="damage_removed_aurora", number=4, section="main", model="aurora",
                build=_b_damage_removed_aurora,
                inputs=("harness_damage_removed.csv",
                        "harness_damage_removed_labels.csv"),
-               title="Aurora: damage removed per configuration, balance axis"),
+               title="Aurora: damage removed per configuration"),
     FigureSpec(id="replication_forest", number=5, section="main", model="cross",
                build=_b_replication_forest,
                inputs=("harness_results_composite.csv",
@@ -508,7 +503,7 @@ REGISTRY: list = [
                build=_b_adaln_bound,
                inputs=("harness_results_adaln/adaln_marginal.csv",
                        "harness_damage_removed.csv"),
-               title="Stormer: incremental effect of protecting adaln after embed"),
+               title="Stormer: incremental effect of protecting adaln"),
 
     # ---- appendix
     FigureSpec(id="paired_effects_aurora", number=1, section="appendix", model="aurora",
@@ -526,44 +521,46 @@ REGISTRY: list = [
     FigureSpec(id="localisation_stormer", number=3, section="appendix", model="stormer",
                build=_b_localisation_stormer,
                inputs=("ablation_analysis_ablation_W8A8/sensitivity.csv",),
-               title="Stormer: distortion per layer group, by axis"),
+               title="Stormer: distortion per layer group"),
     FigureSpec(id="axis_decomposition_aurora", number=4, section="appendix", model="aurora",
                build=_b_axis_decomposition_aurora,
                inputs=("harness_results_paired.csv",
                        "harness_results_paired_dry_air_mass.csv"),
-               title="Distortion decomposed into balance and conservation axes"),
+               title="Aurora: distortion decomposed by axis"),
     FigureSpec(id="axis_decomposition_stormer", number=5, section="appendix", model="stormer",
                build=_b_axis_decomposition_stormer,
                inputs=("stormer_paired_wind_balance.csv",
                        "stormer_paired_dry_air_mass.csv"),
-               title="Stormer: distortion decomposed into balance and conservation axes"),
+               title="Stormer: distortion decomposed by axis"),
     FigureSpec(id="axis_robustness", number=6, section="appendix", model="aurora",
                build=_b_axis_robustness,
                inputs=("harness_axis_variants.csv",),
-               title="Physics advantage under three consistency-axis definitions"),
+               title="Physics advantage under three axis definitions"),
     FigureSpec(id="activation_blindness", number=7, section="appendix", model="aurora",
                build=_b_activation_blindness,
                # the second entry is the FALLBACK the build tries when _28 is absent
                inputs=("activation_analysis/activation_stats_table_28.csv",
                        "activation_analysis/activation_stats_table.csv",
                        "ablation_analysis_ablations_W8A8/sensitivity.csv"),
-               title="Activation outlier statistics versus physics damage, per layer group"),
+               title="Activation outliers vs physics damage"),
     FigureSpec(id="calibration_drift", number=8, section="appendix", model="aurora",
                build=_b_calibration_drift,
                inputs=("activation_analysis/activation_stats_table_10.csv",
                        "activation_analysis/activation_stats_table_28.csv"),
-               title="Calibration statistics versus rollout depth"),
+               title="Calibration statistics vs rollout depth"),
     FigureSpec(id="surrogate_transfer", number=9, section="appendix", model="cross",
                build=_b_surrogate_transfer,
                inputs=("harness_configs_corrected.csv",
                        "harness_configs_standard.csv",
+                       "harness_results_n48/figA09_predicted_rebuilt.csv",
                        "harness_results_n48/harness_results.csv",
                        "harness_results_n48/harness_axis_standard.csv",
                        "stormer_harness_configs.csv",
                        "stormer_harness_configs_standard.csv",
+                       "harness_results_n47/figA09_predicted_rebuilt.csv",
                        "harness_results_n47/harness_results.csv",
                        "harness_results_n47/harness_axis_standard.csv"),
-               title="Predicted versus measured damage as a share of uniform-floor damage",
+               title="Predicted vs measured damage",
 ),
     FigureSpec(id="lead_robustness_stormer", number=10, section="appendix", model="stormer",
                build=_b_lead_robustness_stormer,
@@ -581,7 +578,7 @@ REGISTRY: list = [
 import csv as _csv
 
 
-RMSE_COMPRESSION_TITLE = "RMSE degradation and balance distortion versus lead time"
+RMSE_COMPRESSION_TITLE = "RMSE and balance damage vs lead time"
 
 def _rmse_compression_figure(r, outdir, name, title):
     import torch
@@ -602,7 +599,7 @@ def _rmse_compression_figure(r, outdir, name, title):
                for row in _csv.DictReader(f)}
     spec = [("uniform W8A8 (floor)", "W8A8_floor", "#D55E00", "s"),
             ("physics-protected (span1)", "W8A8_span1", "#0072B2", "o"),
-            ("bf16 ceiling", "ceiling", "#333333", "^")]
+            ("unquantised ceiling", "ceiling", "#333333", "^")]
     series = []
     for lab, tag, col, mk in spec:
         if tag not in pt or (tag, leads[0]) not in bal:
@@ -612,40 +609,22 @@ def _rmse_compression_figure(r, outdir, name, title):
                        [bal[(tag, L)] for L in leads], col, mk))
     del pt
     gc.collect()
-    note = None
-    xcsv = r.rpath("harness_rmse_crossing.csv")
-    if os.path.exists(xcsv):
-        by_lead = {int(row["lead"]): row for row in fc.read_csv(xcsv)}
-
-        def _gap(row):
-            return f"{float(row['diff_pp']):+.2f} pp"
-
-        neg = sorted(L for L, row in by_lead.items() if float(row["diff_pp"]) < 0)
-        if neg:
-            note = f"({_gap(by_lead[neg[0]])})"
-        elif by_lead:
-            narrowest = min(by_lead, key=lambda L: abs(float(by_lead[L]["diff_pp"])))
-            note = (f"the lines never cross, but by {narrowest} h the gap\n"
-                    f"has narrowed to {_gap(by_lead[narrowest])}")
     series = fc.balance_as_percent_of_floor(series, floor_label=spec[0][0])
     per_init = fc.read_per_init(r.rpath("harness_rmse_lead_per_init.csv"))
     per_var = fc.read_per_init_var(r.rpath("harness_rmse_lead_per_init_var.csv"))
-    bands, agreement, agreement_of = None, None, ("", "")
+    bands, agreement = None, None
     if per_init:
         bands = {sp[0]: b for sp, b in
                  ((sp, fc.pooled_boot_ci(per_var, sp[1], leads)) for sp in spec) if b}
         agreement = fc.paired_sign_agreement(per_init, spec[0][1], spec[1][1], leads)
-        if agreement:
-            agreement_of = (spec[0][0], spec[1][0])
     return fc.draw_rmse_compression(leads, series, outdir, name, title,
-                                    crossing_note=note, balance_percent=True,
-                                    rmse_bands=bands, agreement=agreement,
-                                    agreement_of=agreement_of)
+                                    balance_percent=True,
+                                    rmse_bands=bands, agreement=agreement)
 
 
 def _b_rmse_compression(roots, outdir):
     """Aurora's fig01. Inputs: harness_results.pt, harness_results_by_lead_floored.csv
-    (with harness_results_by_lead.csv as the ungated fallback), harness_rmse_crossing.csv."""
+    (with harness_results_by_lead.csv as the ungated fallback)."""
     return _rmse_compression_figure(roots["aurora"], outdir, "fig01_rmse_compression.png",
                                     RMSE_COMPRESSION_TITLE)
 
@@ -660,7 +639,7 @@ REGISTRY.append(
 
 # ------------------------------------------------------------------ lead divergence
 
-LEAD_DIVERGENCE_TITLE = "Physics advantage versus lead time, both models"
+LEAD_DIVERGENCE_TITLE = "Physics advantage vs lead time"
 
 LEAD_DIVERGENCE_TAIL = (
     "This trend is POST-HOC and "
@@ -741,22 +720,9 @@ REGISTRY.append(
 
 # ------------------------------------------------ surrogate validity condition
 
-ADDITIVITY_TITLE = "Summed single-group effects versus the measured joint effect"
+ADDITIVITY_TITLE = "Summed single-group effects vs measured joint effect"
 
 
-def _reversing_schemes(roots):
-    a, s = roots["aurora"], roots["stormer"]
-    data = fc.prepare_endpoint_forest({
-        "Aurora": {"balance": a.rpath("harness_results_paired.csv"),
-                   "composite": a.rpath("harness_results_composite.csv")},
-        "Stormer": {"balance": s.rpath("stormer_paired_wind_balance.csv"),
-                    "composite": s.rpath("stormer_composite.csv")}})
-    out = set()
-    for i in fc.endpoint_reversals(data, "balance", "composite"):
-        tag = data["labels"][i].split()[-1]
-        scheme = fc._scheme_of(tag)
-        out.add((data["model"][i], "W4" if scheme == "W4W8" else scheme))
-    return out
 
 
 def _b_additivity(roots, outdir):
@@ -764,7 +730,6 @@ def _b_additivity(roots, outdir):
     if not rows:
         return None
     fc.write_additivity_csv(rows, os.path.join(outdir, "additivity_by_scheme.csv"))
-    broken = _reversing_schemes(roots)
 
     def cell(model, scheme, bucket):
         for r in rows:
@@ -816,7 +781,7 @@ def _b_additivity(roots, outdir):
             "OPPOSITE SIGN) and are excluded: unplottable on a log axis, and a sign error is "
             "a different failure from a scale error.".format(d=dropped))
     return fc.draw_additivity(rows, outdir, "figA15_additivity.png", ADDITIVITY_TITLE,
-                              broken=broken, boxes=True)
+                              boxes=True)
 
 
 REGISTRY.append(
@@ -885,20 +850,20 @@ def _b_cost_scope(roots, outdir):
     pts = fc.prepare_cost_scope(r.rpath("harness_results.csv"), COST_SCOPE_TAGS)
     return fc.draw_cost_scope(
         pts, outdir, "figA12_cost_scope.png",
-        "Aurora: measured model size and latency versus balance distortion")
+        "Aurora: model size and latency vs balance distortion")
 
 
 REGISTRY.append(
     FigureSpec(id="cost_scope", number=12, section="appendix", model="aurora",
                build=_b_cost_scope,
                inputs=("harness_results.csv",),
-               title="Aurora: measured model size and latency versus balance distortion",
+               title="Aurora: model size and latency vs balance distortion",
 ))
 
 
 # ------------------------------------------- RMSE vs lead across the config families
 
-RMSE_LEAD_FAMILIES_TITLE = "RMSE degradation versus lead time, by configuration family"
+RMSE_LEAD_FAMILIES_TITLE = "RMSE degradation vs lead time, by family"
 
 RMSE_LEAD_ROLES = [
     ("floor", "uniform floor", "#D55E00", "s"),
@@ -934,7 +899,7 @@ def _rmse_lead_cells_for(pt, leads):
                   for role, label, colour, marker in RMSE_LEAD_ROLES
                   if f"{scheme}_{role}" in got]
         if series and "ceiling" in ceil:
-            series.append(("bf16 ceiling", ceil["ceiling"], "#333333", "x"))
+            series.append(("unquantised ceiling", ceil["ceiling"], "#333333", "x"))
         cols.append((col_label, series or None))
     return cols
 
@@ -983,7 +948,7 @@ def _rmse_lead_cells_from_csv(path, leads, guided=(), spread=None):
                 series.append((label, vals, colour, marker, ls, sample) if sample
                               else (label, vals, colour, marker, ls))
         if series and ceil is not None:
-            series.append(("bf16 ceiling", ceil, "#333333", "x"))
+            series.append(("unquantised ceiling", ceil, "#333333", "x"))
         cols.append((col_label, series or None))
     return cols
 
@@ -1026,8 +991,7 @@ REGISTRY.append(
 ))
 
 
-RMSE_LEAD_GUIDED_TITLE = ("RMSE degradation versus lead time, physics-guided against "
-                          "RMSE-guided")
+RMSE_LEAD_GUIDED_TITLE = "RMSE degradation vs lead time, by guide"
 def _b_rmse_lead_families_guided(roots, outdir):
     leads = list(RMSE_LEAD_LEADS)
     cells = []
@@ -1059,8 +1023,7 @@ REGISTRY.append(
 ))
 
 
-CONCENTRATION_AXIS_TITLE = ("Damage concentration curve, by guide axis\n"
-                            "(each curve normalised by its own total)")
+CONCENTRATION_AXIS_TITLE = "Damage concentration curve, by guide axis"
 CONCENTRATION_AXES = (("balance", "balance", "-", "o", "physics"),
                       ("conservation", "conservation", "-.", "^", "accent"),
                       ("standard", "RMSE", "--", "s", "rmse"))
@@ -1169,7 +1132,7 @@ REGISTRY.append(
 
 # ------------------------------------------------------------------ damage plane
 
-AXIS_DISPLACEMENT_TITLE = ("Displacement along the balance and conservation axes, by guide")
+AXIS_DISPLACEMENT_TITLE = ("Displacement along the balance and conservation axes")
 
 
 def _b_axis_displacement(roots, outdir):
@@ -1200,10 +1163,6 @@ def _b_axis_displacement(roots, outdir):
                 color=colour, lw=1.4, alpha=0.55, zorder=2)
         ax.scatter([p[0] for _, p in pts], [p[1] for _, p in pts], s=95, marker=marker,
                    color=colour, edgecolor="white", linewidth=1.4, zorder=4, label=label)
-        for (t, p), off in zip(pts, offsets):
-            ax.annotate(t.replace("W8A8_", ""), p, textcoords="offset points", xytext=off,
-                        fontsize=7.5, color=colour, fontweight="bold")
-
     fig, ax = plt.subplots(figsize=(7.6, 6.2))
 
     rnd = [xy(f"W8A8_rand_{i}") for i in range(4)]
@@ -1224,19 +1183,16 @@ def _b_axis_displacement(roots, outdir):
     if pio:
         ax.scatter(*pio, s=125, marker="D", color=fc.C["accent"], edgecolor="white",
                    linewidth=1.4, zorder=5, label="positional (protect first/last)")
-        ax.annotate("protect_io", pio, textcoords="offset points", xytext=(9, -12),
-                    fontsize=7.5, color="#333333")
-
     for tag, lab, mk in (("W8A8_floor", "uniform W8A8 floor", "X"),
-                         ("ceiling", "bf16 ceiling", "*")):
+                         ("ceiling", "unquantised ceiling", "*")):
         p = xy(tag)
         if p:
             ax.scatter(*p, s=170, marker=mk, color="#333333", zorder=5, label=lab)
 
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_xlabel("balance distortion @120 h  (SVR, log - lower is better)")
-    ax.set_ylabel("conservation distortion @120 h  (SVR, log - lower is better)")
+    ax.set_xlabel("balance distortion @120 h  (SVR, log)")
+    ax.set_ylabel("conservation distortion @120 h  (SVR, log)")
     ax.set_title(AXIS_DISPLACEMENT_TITLE + "\nboth guides march left; only the physics guide "
                  "also comes down", fontsize=11.5, fontweight="bold")
     ax.legend(frameon=False, fontsize=8, loc="lower right")
@@ -1262,13 +1218,13 @@ REGISTRY.append(
 ))
 
 
-SPECTRAL_TEST_TITLE = "Power spectral density ratio versus wavenumber"
+SPECTRAL_TEST_TITLE = "Power spectral density ratio vs wavenumber"
 def _b_spectral_test(roots, outdir):
     r = roots["aurora"]
     data = fc.prepare_spectral_test(r.rpath("harness_spectral_psd.csv"),
                                     r.rpath("harness_spectral_amplification.csv"))
     return fc.draw_spectral_test(data, outdir, "figA19_spectral_test.png",
-                                 SPECTRAL_TEST_TITLE)
+                                 SPECTRAL_TEST_TITLE, model="Aurora")
 
 
 REGISTRY.append(
@@ -1280,12 +1236,15 @@ REGISTRY.append(
 ))
 
 
-ALLOCATION_FRONTIER_TITLE = "Measured balance distortion versus allocation budget"
+ALLOCATION_FRONTIER_TITLE = "Aurora: balance distortion vs allocation budget"
 def _b_allocation_frontier(roots, outdir):
     r = roots["aurora"]
     data = fc.prepare_allocation_frontier(r.rpath("harness_results.csv"), axis="balance")
+    # lower left: the default upper-right box grew by two control entries and started
+    # covering the random draws at x ~ 0.5.
     return fc.draw_allocation_frontier(data, outdir, "figA20_allocation_frontier.png",
-                                       ALLOCATION_FRONTIER_TITLE)
+                                       ALLOCATION_FRONTIER_TITLE,
+                                       legend_loc="lower left")
 
 
 REGISTRY.append(
@@ -1312,7 +1271,7 @@ REGISTRY.append(
 ))
 
 
-PER_VARIABLE_RHO_TITLE = "Rank correlation between per-variable RMSE and balance damage"
+PER_VARIABLE_RHO_TITLE = "Rank correlation, per-variable RMSE vs balance damage"
 def _b_per_variable_rho(roots, outdir):
     r = roots["aurora"]
     rows = fc.prepare_per_variable_rho(
@@ -1330,7 +1289,7 @@ REGISTRY.append(
                title=PER_VARIABLE_RHO_TITLE,))
 
 
-ANTICONTROL_TITLE = "Physics-guided versus over-funded RMSE-guided arms, by endpoint"
+ANTICONTROL_TITLE = "Physics-guided vs over-funded RMSE-guided arms"
 def _b_anticontrol(roots, outdir):
     r = roots["aurora"]
     rows = fc.prepare_anticontrol(
@@ -1354,7 +1313,7 @@ REGISTRY.append(
                title=ANTICONTROL_TITLE,))
 
 
-CROSS_QUANTISER_TITLE = "Aurora: share of balance damage per layer group, by quantisation scheme"
+CROSS_QUANTISER_TITLE = "Aurora: share of balance damage, by scheme"
 def _b_cross_quantiser(roots, outdir):
     r = roots["aurora"]
     data = fc.prepare_cross_quantiser(
@@ -1372,7 +1331,7 @@ REGISTRY.append(
 
 # ------------------------------------------------- Stormer half of four figures
 
-COST_SCOPE_STORMER_TITLE = "Stormer: measured model size and latency versus balance distortion"
+COST_SCOPE_STORMER_TITLE = "Stormer: model size and latency vs balance distortion"
 def _b_cost_scope_stormer(roots, outdir):
     r = roots["stormer"]
     pts = fc.prepare_cost_scope(r.rpath("harness_results.csv"), COST_SCOPE_TAGS)
@@ -1386,7 +1345,7 @@ REGISTRY.append(
                title=COST_SCOPE_STORMER_TITLE,))
 
 
-ALLOCATION_FRONTIER_STORMER_TITLE = "Stormer: measured balance distortion versus allocation budget"
+ALLOCATION_FRONTIER_STORMER_TITLE = "Stormer: balance distortion vs allocation budget"
 def _b_allocation_frontier_stormer(roots, outdir):
     """Stormer's FLOP-share / weight-byte allocation frontier, from harness_results.csv."""
     r = roots["stormer"]
@@ -1406,8 +1365,7 @@ REGISTRY.append(
 
 
 ALLOCATION_FRONTIER_STORMER_BAL_TITLE = (
-    "Stormer: measured balance distortion versus allocation cost, "
-    "balance-scalarisation points only")
+    "Stormer: balance distortion vs allocation cost (balance arm)")
 def _b_allocation_frontier_stormer_balance_arm(roots, outdir):
     r = roots["stormer"]
     data = fc.prepare_allocation_frontier(r.rpath("harness_results.csv"), axis="balance",
@@ -1427,7 +1385,7 @@ REGISTRY.append(
 ))
 
 
-CROSS_QUANTISER_STORMER_TITLE = "Stormer: share of balance damage per layer group, by quantisation scheme"
+CROSS_QUANTISER_STORMER_TITLE = "Stormer: share of balance damage, by scheme"
 def _b_cross_quantiser_stormer(roots, outdir):
     """Does Stormer's localisation survive a change of quantiser? Reads the same
     ablation_analysis_cross_scheme/cross_scheme.csv layout Aurora uses -- identical header,
@@ -1447,7 +1405,7 @@ REGISTRY.append(
 ))
 
 
-RMSE_COMPRESSION_STORMER_TITLE = "Stormer: RMSE degradation and balance distortion versus lead time"
+RMSE_COMPRESSION_STORMER_TITLE = "Stormer: RMSE and balance damage vs lead time"
 def _b_rmse_compression_stormer(roots, outdir):
     return _rmse_compression_figure(roots["stormer"], outdir,
                                     "figA30_rmse_compression_stormer.png",
@@ -1457,15 +1415,14 @@ def _b_rmse_compression_stormer(roots, outdir):
 REGISTRY.append(
     FigureSpec(id="rmse_compression_stormer", number=30, section="appendix", model="stormer",
                build=_b_rmse_compression_stormer,
-               inputs=("harness_results.pt", "harness_results_by_lead.csv",
-                       "harness_rmse_crossing.csv"),
+               inputs=("harness_results.pt", "harness_results_by_lead.csv"),
                title=RMSE_COMPRESSION_STORMER_TITLE,
 ))
 
 
 # ------------------------------------------------ axis carrying the additivity
 
-ADDITIVITY_BY_AXIS_TITLE = "Additivity of the summed single-group effects, by axis"
+ADDITIVITY_BY_AXIS_TITLE = "Additivity of summed single-group effects, by axis"
 
 
 def _b_additivity_by_axis(roots, outdir):
@@ -1566,7 +1523,7 @@ def _scheme_csvs(root):
 
 
 REPRODUCIBILITY_FLOOR_TITLE = (
-    "Aurora: layer-group effect sizes against the measured numerical-noise floor")
+    "Aurora: layer-group effect sizes against the noise floor")
 
 
 def _b_reproducibility_floor(roots, outdir):
@@ -1587,7 +1544,7 @@ REGISTRY.append(
 
 
 REPRODUCIBILITY_FLOOR_STORMER_TITLE = (
-    "Stormer: layer-group effect sizes against the measured numerical-noise floor")
+    "Stormer: layer-group effect sizes against the noise floor")
 
 
 def _b_reproducibility_floor_stormer(roots, outdir):
@@ -1608,10 +1565,8 @@ REGISTRY.append(
                title=REPRODUCIBILITY_FLOOR_STORMER_TITLE))
 
 
-RMSE_SCORECARD_TITLE = ("Percent change in RMSE versus FP32 by variable, level "
-                        "and lead time")
-PHYSICS_SCORECARD_TITLE = ("Percent change in physical-consistency diagnostics versus "
-                           "FP32 by metric and lead time")
+RMSE_SCORECARD_TITLE = "RMSE change vs unquantised"
+PHYSICS_SCORECARD_TITLE = "Physics diagnostic change vs unquantised"
 
 
 def _b_rmse_scorecard(roots, outdir):
@@ -1642,10 +1597,8 @@ REGISTRY.append(
                title=PHYSICS_SCORECARD_TITLE))
 
 
-RMSE_SCORECARD_STORMER_TITLE = ("Stormer: percent change in RMSE versus FP32 by "
-                                "variable, level and lead time")
-PHYSICS_SCORECARD_STORMER_TITLE = ("Stormer: percent change in physical-consistency "
-                                   "diagnostics versus FP32 by metric and lead time")
+RMSE_SCORECARD_STORMER_TITLE = "Stormer: RMSE change vs unquantised"
+PHYSICS_SCORECARD_STORMER_TITLE = "Stormer: physics diagnostic change vs unquantised"
 
 
 def _b_rmse_scorecard_stormer(roots, outdir):
@@ -1663,7 +1616,7 @@ REGISTRY.append(
 
 
 def _b_physics_scorecard_stormer(roots, outdir):
-    """fig10's twin. Every cell is a change against that model's OWN FP32 run, so the"""
+    """fig10's twin. Every cell is a change against that model's OWN unquantised run, so the"""
     r = roots["stormer"]
     data = fc.prepare_scorecard(r.rpath("scorecard.csv"), "physics")
     return fc.draw_scorecard(data, outdir, "figA33_physics_scorecard_stormer.png",

@@ -57,8 +57,6 @@ def _reduce_axis(family_values, axis, reducer=None):
         return float(np.abs(x).max())   # 1-D degenerate PC == max magnitude
     raise ValueError(f"unknown reducer {reducer!r}")
 
-HEATMAP_EXCLUDE = ("div/vort", "Hyps")
-
 CSV_FIELDS = ["group", "metric", "lead", "fp32_mean", "group_mean", "mean_delta",
               "ci_lo", "ci_hi", "rel_pct", "svr", "svr_ci_lo", "svr_ci_hi",
               "distortion",
@@ -194,6 +192,41 @@ def available_specs(fp32_run, group_run, specs, lead):
     return out
 
 
+def card_specs(registry_specs):
+    """Resolve the fig09/fig10 scorecard rows to MetricSpecs, in card order."""
+    from scorecard_rows import CARDS
+    by_label = {s.label: s for s in registry_specs}
+    cards, extras = {}, []
+    for name, rows in CARDS.items():
+        out = []
+        for row in rows:
+            spec = by_label.get(row.label)
+            if spec is None and row.kind == "raw":
+                spec = MetricSpec(row.label, row.group, row.key, "error_pos")
+                extras.append(spec)
+            if spec is None:
+                print(f"  card row '{row.label}' not available (no registry spec)",
+                      flush=True)
+                continue
+            out.append(spec)
+        cards[name] = out
+    return cards, extras
+
+
+def card_blocks(card, labels):
+    """[(block name, start, stop)] over the rows actually plotted, in card order."""
+    from scorecard_rows import CARDS
+    name_of = {r.label: r.block for r in CARDS[card]}
+    out = []
+    for i, l in enumerate(labels):
+        b = name_of.get(l, "")
+        if out and out[-1][0] == b:
+            out[-1][2] = i + 1
+        else:
+            out.append([b, i, i + 1])
+    return [tuple(b) for b in out]
+
+
 def full_damage_table(scheme, specs, leads):
     paths = [f"all_metrics_{scheme}.pt", f"all_metrics_{FULL_FP32_KEY}.pt"]
     if not all(os.path.exists(p) for p in paths):
@@ -224,14 +257,16 @@ def full_damage_table(scheme, specs, leads):
 
 
 def sensitivity_records(fp32_run, oat_runs, specs, groups, leads, dates, block,
-                        full_table, norm_mode, noise_floor):
+                        full_table, norm_mode, noise_floor, heatmap_only=()):
     """One row per (group, metric, lead); share/colmax normalisation per column."""
     svr_method = pick_svr_method(dates)
+    only = set(heatmap_only)
     recs = []
     for lead in leads:
         for spec in specs:
             base = spec_series(fp32_run, spec, lead)
-            sigma = noise_floor.sigma_for(spec, lead)
+            extra = spec.label in only
+            sigma = 0.0 if extra else noise_floor.sigma_for(spec, lead)
             col = []
             for g in groups:
                 val = spec_series(oat_runs[g], spec, lead)
@@ -243,10 +278,12 @@ def sensitivity_records(fp32_run, oat_runs, specs, groups, leads, dates, block,
                     "mean_delta": r["mean_diff"], "ci_lo": r["ci_lo"], "ci_hi": r["ci_hi"],
                     "rel_pct": r["rel_diff_pct"],
                     "svr": sv["svr"], "svr_ci_lo": sv["svr_ci_lo"], "svr_ci_hi": sv["svr_ci_hi"],
-                    "distortion": distortion(r["mean_diff"], sv["svr_denom"], sigma),
+                    "distortion": (float("nan") if extra else
+                                   distortion(r["mean_diff"], sv["svr_denom"], sigma)),
                     "significant": bool(r["significant"]),
                     "lag1_autocorr": r["lag1_autocorr"], "n": r["n"], "n_eff": r["n_eff"],
                     "share": float("nan"), "norm": "",
+                    "heatmap_only": extra,
                 })
             _normalise_column(col, spec, lead, full_table, norm_mode)
             recs.extend(col)
@@ -278,6 +315,8 @@ def add_ranks(records):
 
 
 def write_csv(records, path):
+    """Registry rows only; heatmap-only rows would redefine the allocator's standard axis."""
+    records = [r for r in records if not r.get("heatmap_only")]
     with open(path, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=CSV_FIELDS, extrasaction="ignore")
         w.writeheader()
@@ -365,8 +404,22 @@ def _fmt_cell(v):
     return f"{v:.0f}" if abs(v) >= 100 else f"{v:.2g}"
 
 
+def _draw_blocks(ax, blocks, n_cols):
+    """Horizontal rules between card blocks, with the block name in the right margin."""
+    if not blocks:
+        return
+    for _, _, stop in blocks[:-1]:
+        ax.axhline(stop - 0.5, color="#333", lw=0.9)
+    for name, start, stop in blocks:
+        if not name:
+            continue
+        ax.text(n_cols - 0.35, (start + stop - 1) / 2.0, name, rotation=270,
+                ha="left", va="center", fontsize=6.5, fontweight="bold",
+                color="#444", clip_on=False)
+
+
 def plot_value_heatmap(records, spec_labels, groups, lead, key, out_path, title,
-                       vmax=None, hatch_nonsig=True):
+                       vmax=None, hatch_nonsig=True, blocks=None):
     """Metrics x groups heatmap with the value printed in each cell (numbers, not
     just colour) and non-significant cells hatched."""
     M, S = _matrix(records, spec_labels, groups, lead, key)
@@ -385,6 +438,7 @@ def plot_value_heatmap(records, spec_labels, groups, lead, key, out_path, title,
                 strong = abs(M[i, j]) > 0.75 * vmax
                 ax.text(j, i, _fmt_cell(M[i, j]), ha="center", va="center",
                         fontsize=5, color="w" if strong else "k")
+    _draw_blocks(ax, blocks, len(groups))
     ax.set_xticks(range(len(groups)))
     ax.set_xticklabels(groups, rotation=90, fontsize=7)
     ax.set_yticks(range(len(spec_labels)))
@@ -395,7 +449,7 @@ def plot_value_heatmap(records, spec_labels, groups, lead, key, out_path, title,
     save_fig(fig, os.path.dirname(out_path), os.path.basename(out_path))
 
 
-def plot_rank_heatmap(records, spec_labels, groups, lead, out_path):
+def plot_rank_heatmap(records, spec_labels, groups, lead, out_path, blocks=None):
     M, _ = _matrix(records, spec_labels, groups, lead, "rank")
     fig, ax = plt.subplots(figsize=(0.55 * len(groups) + 3.5, 0.28 * len(spec_labels) + 2))
     ax.imshow(M, aspect="auto", cmap="viridis_r")
@@ -403,6 +457,7 @@ def plot_rank_heatmap(records, spec_labels, groups, lead, out_path):
         for j in range(len(groups)):
             if np.isfinite(M[i, j]):
                 ax.text(j, i, int(M[i, j]), ha="center", va="center", fontsize=5, color="w")
+    _draw_blocks(ax, blocks, len(groups))
     ax.set_xticks(range(len(groups)))
     ax.set_xticklabels(groups, rotation=90, fontsize=7)
     ax.set_yticks(range(len(spec_labels)))
@@ -737,31 +792,46 @@ def analyse_dir(cfg_dir, leads_arg=None, norm_mode="auto",
     print(f"metrics ({len(specs)}): {labels}", flush=True)
 
     scheme = _scheme_of(cfg_dir)
-    full_table = full_damage_table(scheme, specs, leads) if (
+    cards, extras = card_specs(specs)
+    kept = available_specs(fp32_run, first, extras, leads[0])
+    gone = {id(s) for s in extras} - {id(s) for s in kept}
+    cards = {c: [s for s in sp if id(s) not in gone] for c, sp in cards.items()}
+    extras = kept
+    extra_labels = {s.label for s in extras}
+    record_specs = specs + extras
+    print(f"card rows: +{len(extras)} heatmap-only specs "
+          f"({len(specs)} registry -> {len(record_specs)} records)", flush=True)
+
+    full_table = full_damage_table(scheme, record_specs, leads) if (
         norm_mode != "colmax" and scheme) else None
     full_run = None
     if os.path.exists(f"all_metrics_{scheme}.pt"):
         full_run = MetricsRun(scheme, torch.load(f"all_metrics_{scheme}.pt",
                                                  map_location="cpu", weights_only=False))
 
-    recs = sensitivity_records(fp32_run, oat_runs, specs, groups, leads, dates, block,
-                               full_table, norm_mode, noise_floor)
+    recs = sensitivity_records(fp32_run, oat_runs, record_specs, groups, leads, dates,
+                               block, full_table, norm_mode, noise_floor,
+                               heatmap_only=extra_labels)
     add_ranks(recs)
     write_csv(recs, os.path.join(out, "sensitivity.csv"))
     rec_idx = record_index(recs)
     colors = group_color_map(groups)
 
-    heatmap_labels = [l for l in labels
-                      if not any(x in l for x in HEATMAP_EXCLUDE)]
     for lead in leads:
-        plot_value_heatmap(recs, heatmap_labels, groups, lead, "share",
-                           os.path.join(out, f"share_heatmap_{lead}h.png"),
-                           "Share of full-quant damage", vmax=1.5)
-        plot_value_heatmap(recs, heatmap_labels, groups, lead, "svr",
-                           os.path.join(out, f"svr_heatmap_{lead}h.png"),
-                           "SVR (Δ / deseasonalised FP32 IQR)")
-        plot_rank_heatmap(recs, heatmap_labels, groups, lead,
-                          os.path.join(out, f"rank_heatmap_{lead}h.png"))
+        for card, card_spec_list in cards.items():
+            clabels = [s.label for s in card_spec_list]
+            cblocks = card_blocks(card, clabels)
+            plot_value_heatmap(recs, clabels, groups, lead, "share",
+                               os.path.join(out, f"share_heatmap_{card}_{lead}h.png"),
+                               f"Share of full-quant damage ({card} card)",
+                               vmax=1.5, blocks=cblocks)
+            plot_value_heatmap(recs, clabels, groups, lead, "svr",
+                               os.path.join(out, f"svr_heatmap_{card}_{lead}h.png"),
+                               f"SVR (Δ / deseasonalised FP32 IQR) ({card} card)",
+                               blocks=cblocks)
+            plot_rank_heatmap(recs, clabels, groups, lead,
+                              os.path.join(out, f"rank_heatmap_{card}_{lead}h.png"),
+                              blocks=cblocks)
         plot_layer_summary(recs, specs, groups, lead, colors, out)
         plot_physics_vs_rmse(recs, specs, groups, lead, colors, out)
         plot_collinearity(recs, labels, groups, lead, out)
