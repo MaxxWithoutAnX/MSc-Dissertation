@@ -1,6 +1,6 @@
-# Physics-Aware Quantisation of AI Weather Predictin Models
+# Physics-Aware Quantisation of AI Weather Prediction Models
 
-This repo contains the code for my Imperial College London MSc Artificial Intelligence dissertation titled: Physics Aware Evaluation of Post Training Quantisation of AI Weather Prediction Models.
+This repo contains the code for my Imperial College London MSc Artificial Intelligence dissertation titled: Physics-Aware Evaluation of Post Training Quantisation of AI Weather Prediction Models.
 
 
 ## Overview
