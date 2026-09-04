@@ -1,3 +1,23 @@
+# Which frontier set each harness config was solved from. Nothing reads this file;
+# it exists so the manifest can be traced back to the allocation that produced it.
+#
+# selected_from:
+#   frontiers/flops_real  committed, in this directory. 15 configs.
+#   both                  the same point in flops_real and corrected. 12 configs,
+#                         recoverable from flops_real.
+#   frontiers/corrected   NOT COMMITTED AND NOT PRESERVED. 9 configs: W8A8_knee,
+#                         W8A8_rmseup_knee, W8A8_rmseup_span1, W4W8_span1/2/3,
+#                         W4W8_rmse_span1/2, W4W8_rmseup_span1.
+#   unmatched             not a frontier point: the protect-I/O heuristic control
+#                         (W8A8_protect_io, W4W8_protect_io), which is chosen by a
+#                         positional rule and is not cost-matched to a frontier.
+#
+# frontiers/corrected was a working directory, regenerated on demand rather than
+# committed (see select_harness_configs.py). Running regen_all_frontiers.py today
+# recreates a directory of that name, but NOT these numbers: the analysis code has
+# changed since the cluster runs were launched, so the 9 configs above cannot be
+# re-derived. Their configs are recorded in full below, and that record -- not the
+# frontier CSV -- is what the measured runs in harness_results_n48/ correspond to.
 tag,n_inits,selected_from,config,protected_bf16
 W4W8_floor,48,both,,
 W4W8_knee,48,both,W8:decoder_heads,

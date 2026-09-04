@@ -1,4 +1,5 @@
-"""Re-gate the harness's balance and conservation with a now-available noise floor."""
+""" Used to rescore the distortion values with noise floor from the fifteen member ensemble
+"""
 import argparse
 import os
 import sys

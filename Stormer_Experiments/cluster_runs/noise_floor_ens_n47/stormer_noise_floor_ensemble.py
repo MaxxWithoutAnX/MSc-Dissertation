@@ -10,11 +10,11 @@ import physq_path
 
 import stormer_precision_harness as H
 import run_stormer_precision_harness as D
-from prepare_2021_h5 import MODEL_VARIABLES
+from prepare_year_h5 import MODEL_VARIABLES
 
 SEED = int(os.environ.get("SLURM_ARRAY_TASK_ID", "0"))
 EPS = 0.0 if SEED == 0 else float(os.environ.get("NF_EPS", "1e-6"))   # seed 0 = reference
-SPLIT = os.environ.get("NF_SPLIT", "test_2021")
+SPLIT = os.environ.get("NF_SPLIT", "era5_2021")
 ROOT = os.environ.get("NF_ROOT", D.ROOT_DIR)
 CKPT = os.environ.get("NF_CKPT", D.CKPT)
 N_INITS = int(os.environ.get("NF_N_INITS", "47"))

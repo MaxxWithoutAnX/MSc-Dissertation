@@ -1,3 +1,6 @@
+""" Distortion metric and noise floor functions/class. Quantisation change is only credited if damage is above
+the noise floor from the 15 member ensemble run.
+"""
 import os
 import numpy as np
 import torch
@@ -5,12 +8,19 @@ import torch
 
 class NoiseFloor:
     def __init__(self, detailed=None):
-        # detailed: {floor_type: {"per_family": {family: {lead: value}}}} or None
+        """
+        Numerical noise floor class.
+        Args:
+            detailed [dict | None]: {floor_type: {"per_family": {family: {lead: value}}}} or None
+        """
         self._detailed = detailed
         self.is_null = detailed is None
 
     @classmethod
     def null(cls):
+        """ Null floor. Used when using a noise floor would be circular (ie building ensemble floor) and when 
+            no noise floor exists code still runs.
+        """
         return cls(None)
 
     @classmethod
@@ -19,22 +29,15 @@ class NoiseFloor:
             return cls.null()
         return cls(torch.load(path, map_location="cpu", weights_only=False))
 
-    def sigma(self, family_key, lead):
-        """Conservative (max over floor types) run-to-run floor for a family at a
-        lead; 0.0 when unknown so an unmatched metric is never gated. LEGACY: the
-        gate itself now uses sigma_for()."""
-        if self._detailed is None:
-            return 0.0
-        vals = []
-        for ftype in self._detailed.values():
-            fam = ftype.get("per_family", {}).get(family_key, {})
-            if lead in fam:
-                vals.append(float(fam[lead]))
-        return max(vals) if vals else 0.0
-
     def sigma_for(self, spec, lead):
         """Conservative (max over floor types) per-metric run-to-run floor. 0.0 when
-        that metric has no measured floor, so it is never gated."""
+        that metric has no measured floor, so it is never gated.
+        Args:
+            spec [MetricSpec]: Metric to look up.
+            lead [int] : A single lead time in hours. Should have a value 24, 72, 120, or 168 to match the rest of the code
+        Returns:
+            float : Largest magnitude in SVR of that metric at that lead time in the ensemble
+        """
         if self._detailed is None:
             return 0.0
         vals = []
@@ -46,6 +49,12 @@ class NoiseFloor:
 
 
 def floor_family_of(spec):
+    """ Matches metric to a string for identification
+    Args: 
+        spec [MetricSpec] : Metric to look up
+    Returns:
+        str | None : Key of metric or None as a fallback if no match
+    """
     label = spec.label
     if label.startswith("RMSE "):           return "w_rmse"
     if label.startswith("SpecDiv"):         return "spec_div"
@@ -58,6 +67,14 @@ def floor_family_of(spec):
 
 
 def distortion(delta, iqr, sigma):
+    """ Distortion calculation function
+    Args:
+        delta [float]   : Difference between quantised and full precision run
+        iqr [float]     : Full precision run spread across initialisations
+        sigma [float]   : Measured noise floor
+    Returns:
+        float : Calculated distortion
+    """
     if not np.isfinite(iqr) or iqr <= 0:
         return 0.0
     return float(max(0.0, abs(delta) - max(0.0, sigma)) / iqr)

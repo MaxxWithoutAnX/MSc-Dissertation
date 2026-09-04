@@ -12,6 +12,8 @@ source /vol/cuda/12.4.0/setup.sh
 export MPLBACKEND=Agg
 
 # --- Config ---
+export STORMER_H5_ROOT=/vol/bitbucket/mes25/wb2_h5df
+export STORMER_SPLIT=era5_2020   # 2020 = ablation year; harness uses era5_2021
 export ABLATION_N_INITS=48   # 48 inits (~4/month, seasonally spread); 0 = all 12h-stride inits
 
 # --- Run ---

@@ -141,7 +141,7 @@ def analyse(score_lead=120):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--root-dir", default="/vol/bitbucket/mes25/wb2_h5df", dest="root_dir")
-    ap.add_argument("--data-split", default="test_2021", dest="data_split")
+    ap.add_argument("--data-split", default="era5_2021", dest="data_split")
     ap.add_argument("--checkpoint",
                     default="/vol/bitbucket/mes25/stormer_checkpoints/"
                             "stormer_1.40625_patch_size_2.ckpt")

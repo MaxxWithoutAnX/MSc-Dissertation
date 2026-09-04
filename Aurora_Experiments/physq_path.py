@@ -1,3 +1,5 @@
+""" Share analysis core path as physq_core only lives in Aurora_Experiments. Import at the beginning.
+"""
 import os
 import sys
 

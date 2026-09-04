@@ -1,3 +1,5 @@
+""" Score a saved rollout into all_metrics.pt files for downstream analysis.
+"""
 from collections import defaultdict
 from eval_metrics import compute_all_metrics, difference_kinetic_energy
 import datetime

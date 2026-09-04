@@ -1,6 +1,9 @@
+""" Convert regridded NetCDF into one HDF-5 per 6 hour step. Taken from Stormer Github.
+"""
 import os
 import argparse
 import numpy as np
+import pandas as pd
 import xarray as xr
 import h5py
 from tqdm import tqdm
@@ -13,7 +16,7 @@ from stormer.utils.data_utils import (
 
 # change as needed
 VARS = [
-    "anisotropy_of_sub_gridscale_orography",
+    # constants
     "angle_of_sub_gridscale_orography",
     "geopotential_at_surface",
     "high_vegetation_cover",
@@ -26,37 +29,19 @@ VARS = [
     "standard_deviation_of_orography",
     "type_of_high_vegetation",
     "type_of_low_vegetation",
-    
-    "mean_surface_latent_heat_flux",
-    "mean_surface_net_long_wave_radiation_flux",
-    "mean_surface_net_short_wave_radiation_flux",
-    "mean_surface_sensible_heat_flux",
-    "mean_top_downward_short_wave_radiation_flux",
-    "mean_top_net_long_wave_radiation_flux",
-    "mean_top_net_short_wave_radiation_flux",
-    "snow_depth",
-    
+    # single level
     "2m_temperature",
     "10m_u_component_of_wind",
     "10m_v_component_of_wind",
     "10m_wind_speed",
     "mean_sea_level_pressure",
-    "sea_ice_cover",
-    "sea_surface_temperature",
-    "surface_pressure",
-    "total_cloud_cover",
-    "total_precipitation_6hr",
-    "total_precipitation_12hr",
-    "total_precipitation_24hr",
-    "total_column_water_vapour",
-    
+    # pressure level
     "geopotential",
     "specific_humidity",
     "temperature",
     "u_component_of_wind",
     "v_component_of_wind",
     "vertical_velocity",
-    "wind_speed"
 ]
 
 
@@ -68,10 +53,9 @@ def create_one_step_dataset(root_dir, save_dir, split, years, list_vars, chunk_s
     list_single_vars = [v for v in list_vars if v in SINGLE_LEVEL_VARS and v not in CONSTANTS]
     list_pressure_vars = [v for v in list_vars if v in PRESSURE_LEVEL_VARS]
     
-    # load a constant variable to save lat and lon arrays
-    ds_constant = xr.open_dataset(os.path.join(root_dir, f'{list_constant_vars[0]}.nc'))
-    lat = np.sort(ds_constant.latitude.to_numpy())
-    lon = np.sort(ds_constant.longitude.to_numpy())
+    ddeg = 1.40625
+    lat = np.linspace(-90 + ddeg / 2, 90 - ddeg / 2, num=128)
+    lon = np.linspace(0, 360, num=256, endpoint=False)
     np.save(os.path.join(save_dir, 'lat.npy'), lat)
     np.save(os.path.join(save_dir, 'lon.npy'), lon)
     
@@ -82,8 +66,6 @@ def create_one_step_dataset(root_dir, save_dir, split, years, list_vars, chunk_s
         else:
             n_chunks = 1
             chunk_size = len(ds_sample.time)
-        
-        idx_in_year = 0
         
         ds_dict = {}
         for var in (list_single_vars + list_pressure_vars):
@@ -107,6 +89,9 @@ def create_one_step_dataset(root_dir, save_dir, split, years, list_vars, chunk_s
                             dict_np[f'{var}_{level}'] = ds_np[:, i]
                     
             for i in tqdm(range(len(list_time_stamps)), desc='time stamps', position=2, leave=False):
+                idx_in_year = int(
+                    (pd.Timestamp(list_time_stamps[i]) - pd.Timestamp(f'{year}-01-01'))
+                    // pd.Timedelta(hours=6))
                 data_dict = {
                     'input': {'time': str(list_time_stamps[i])}
                 }
@@ -129,8 +114,6 @@ def create_one_step_dataset(root_dir, save_dir, split, years, list_vars, chunk_s
                                 group.create_dataset(sub_key, data=array, compression=None, dtype=np.float32)
                             else:
                                 group.create_dataset(sub_key, data=array, compression=None)
-                
-                idx_in_year += 1
 
 
 def parse_args():

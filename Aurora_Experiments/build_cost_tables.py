@@ -1,3 +1,5 @@
+""" Produces cost_tables.pt that the allocator later reads by building the model adn running forward passes.
+"""
 import datetime
 import os
 import sys

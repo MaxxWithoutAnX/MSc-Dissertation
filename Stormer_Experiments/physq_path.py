@@ -1,3 +1,5 @@
+""" Share analysis core path as physq_core only lives in Aurora_Experiments. Import at the beginning.
+"""
 import os
 import sys
 
@@ -26,7 +28,7 @@ for _cr in (os.path.join(_HERE, "cluster_runs"),
         sys.path.insert(0, _cr)
 
 # The download/regrid/HDF5 scripts live in data_prep/. The harness and the noise-floor
-# ensemble import prepare_2021_h5 (MODEL_VARIABLES) and download_wb2_sampled (select) by name.
+# ensemble import prepare_year_h5 (MODEL_VARIABLES) and download_wb2_sampled (select) by name.
 _DP = os.path.join(_HERE, "data_prep")
 if os.path.isdir(_DP) and _DP not in sys.path:
     sys.path.insert(0, _DP)

@@ -1,3 +1,5 @@
+""" Select Stormer's schemes to run on GPU from the frontier set.
+"""
 import physq_path
 
 import os
@@ -9,7 +11,7 @@ from select_harness_configs import select_all
 import run_stormer_frontiers as rsf
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-FRONTIER_DIR = os.path.join(HERE, "frontiers")
+FRONTIER_DIR = os.path.join(HERE, "frontiers", "flops_real")
 MANIFEST_NAME = "stormer_harness_configs.csv"
 
 

@@ -1,3 +1,5 @@
+""" Aurora W8A8 ablation anaysis (one group quantised per ablation)
+"""
 import torch
 import torch.nn as nn
 from aurora import AuroraPretrained, Batch, Metadata, rollout

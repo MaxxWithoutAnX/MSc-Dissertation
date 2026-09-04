@@ -1,18 +1,32 @@
-# allocator.py
-from collections import OrderedDict
-
+""" Allocation of precision to layer groups. Given a (group, precision) distortion table and cost, creates and sweeps 
+    lambda and returns configurations that are optimal given the ablation analysis results.
+"""
+from collections import OrderedDict, defaultdict
 import numpy as np
+import csv as _csv
 
 CONSISTENCY_AXES = ("balance", "conservation")
 
 
 def combined_distortion(d_axis, weights):
-    """Weighted sum over axes of a per-config or per-(group,precision) distortion dict."""
+    """Scalarise a distortion vector: sum_a weights[a] * d_axis[a]
+    Args:
+        d_axis [dict]   : {axis[str]: distortion[float]}. 
+        weights [dict] : {axis [str]: weight[float]}
+    Returns:
+        float: Weighted sum
+        """
     return float(sum(weights[a] * d_axis.get(a, 0.0) for a in weights))
 
 
 def config_distortion(d, config):
-    """Vector distortion of a full config: {axis: Σ_g d[g][p_g][axis]}."""
+    """Vector distortion of a full config: {axis: Σ_g d[g][p_g][axis]}.
+    Args:
+        d [dict]        : distortion table d[group][precision][axis]
+        config [dict]   : {group: precision}, one precision per group
+    Returns:
+        dict : {axis: distortion}. 
+    """
     out = {a: 0.0 for a in CONSISTENCY_AXES}
     for g, p in config.items():
         for a in CONSISTENCY_AXES:
@@ -21,12 +35,26 @@ def config_distortion(d, config):
 
 
 def worst_axis(d_config):
+    """ Maximum value of distortion.
+    Args:
+        d_config [dict] : {axis:distortion} for one config
+    Returns:
+        float : maximum value of the axes.
+    """
     return float(max(d_config[a] for a in CONSISTENCY_AXES))
 
 
 def allocate_lagrangian(d, cost, weights, lam, precisions):
-    """Per-group independent argmin of combined_distortion + lam*cost. Exact on the
-    convex hull; groups are independent under additivity."""
+    """Chooses one precision per group by argmin of  combined_distortion + lam*cost.
+    Args:
+        d [dict]                : distortion table d[group][precision][axis].
+        cost [dict]             : cost[group][precision], any scalar cost in units matched to lam.
+        weights [dict]          : {axis: weight} passed to combined_distortion.
+        lam [float]             : cost multiplier. 0 = ignore cost (pick the least damaging precision everywhere). large = ignore distortion (pick the cheapest).
+        precisions [iterable]   : precisions to allocate per group.
+    Returns:
+        dict: {group: precision}. Every group in d and the precision it should be allocated
+    """
     config = OrderedDict()
     for g in d:
         best_p, best_obj = None, float("inf")
@@ -39,15 +67,19 @@ def allocate_lagrangian(d, cost, weights, lam, precisions):
 
 
 def _pareto(points):
-    """Keep points not dominated on (cost up-good? no: lower cost + lower balance +
-    lower conservation all better). A point is dominated if another is <= on all
-    three and < on at least one."""
+    """ Pareto filter over the three minimised objectives: cost, balance, conservation.
+    Args:
+        points [list[dict]] : each with "cost", "balance", "conservation" keys.
+    Returns:
+        list[dict]          : the input dicts (same objects, input order) that survive.
+    """
     keep = []
     for p in points:
         dominated = False
         for q in points:
             if q is p:
                 continue
+            # AI helped me with this
             if (q["cost"] <= p["cost"] and q["balance"] <= p["balance"]
                     and q["conservation"] <= p["conservation"]
                     and (q["cost"] < p["cost"] or q["balance"] < p["balance"]
@@ -60,7 +92,16 @@ def _pareto(points):
 
 
 def propose_frontier(d, cost, precisions, weight_grid, lam_grid):
-    """Sweep (axis-weights x lambda), emit unique Pareto configs with vector distortion."""
+    """Sweep (axis-weights x lambda), emit unique Pareto configs with vector distortion.
+    Args:
+        d [dict]: distortion table d[group][precision][axis]
+        cost [dict]: cost[group][precision]
+        precisions [iterable]: candidate precisions per group
+        weight_grid [iterable[tuple]]: (balance_weight, conservation_weight) pairs
+        lam_grid [iterable[float]]: cost multipliers to sweep
+    Returns:
+        list[dict]: Pareto-optimal points, each {"config", "cost", "balance", "conservation"}. Configs recurring across the sweep are emitted once.
+    """
     seen, points = set(), []
     for wb, wc in weight_grid:
         weights = {"balance": wb, "conservation": wc}
@@ -77,13 +118,25 @@ def propose_frontier(d, cost, precisions, weight_grid, lam_grid):
     return _pareto(points)
 
 
-import csv as _csv
-from collections import defaultdict
-
 
 def load_distortion_table(scheme_csvs, lead=120, axes=CONSISTENCY_AXES,
-                          reducer=None, families=None, min_effect_frac=0.0,
-                          axis_floor=0.0, value_col="distortion"):
+                          reducer=None, families=None, min_effect_frac=0.0, value_col="distortion"):
+    """ Build the distortion table d[group][precision][axis] from OAT sensitivity CSVs.
+    Args:
+        scheme_csvs [dict]      : {precision: path to that scheme's sensitivity.csv}
+        lead [int]              : lead time in hours
+        axes [tuple]            : metric axes
+        reducer [str | None]    : how to collapse families within an axis to a single value
+        families [dict | None]  : optional {axis: set(family)} restricting the reduction 
+                                  to a family subset. Used if wanting to exclude certain metrics from the axis.
+        min_effect_frac [float] : zero any axis value below this fraction of that axis's maximum over groups WITHIN its own
+                                 precision. Only used on Aurora.
+        value_col [str]         : which per-metric column to reduce. "distortion" (default) is
+                                sigma-gated, max(0,|delta|-sigma)/IQR; "svr" is the same quantity with
+                                sigma=0. 
+    Returns:
+        dict: {group: {precision: {axis: value}}} where value is the measured damage at that group, precision, axis
+    """
     import ablation_comp as ac
     from plot_common import AGG_CLASS
     d = defaultdict(lambda: defaultdict(dict))
@@ -111,32 +164,25 @@ def load_distortion_table(scheme_csvs, lead=120, axes=CONSISTENCY_AXES,
                     finite = [x for x in v if np.isfinite(x)]
                     fam_vals[f] = sum(finite) / len(finite) if finite else float("nan")
                 d[g][precision][a] = ac._reduce_axis(fam_vals, a, reducer) if fam_vals else 0.0
-    if min_effect_frac > 0.0 and axis_floor > 0.0:
-        raise ValueError(
-            "min_effect_frac and axis_floor are mutually exclusive -- applying both makes "
-            "the effective threshold impossible to state. Use axis_floor for selection; "
-            "min_effect_frac only to reproduce the pre-2026-07-31 frontier.")
-    if axis_floor > 0.0:
-        from axis_noise_floor import apply_absolute_floor
-        apply_absolute_floor(d, axes=list(axes), floor=axis_floor)
-    elif min_effect_frac > 0.0:
+    if min_effect_frac > 0.0:
         from axis_noise_floor import apply_floor
         apply_floor(d, axes=list(axes), frac=min_effect_frac)
-    for g in groups:                     # bf16 = protected reference
+    for g in groups:                     # bf16 = protected reference. FP32 for Stormer, don't want to change it as may risk breaking things.
         d[g]["bf16"] = {a: 0.0 for a in axes}
     return {g: dict(p) for g, p in d.items()}
 
 
 def _family_of_metric(label):
-    """Map a sensitivity.csv metric label back to its registry family key."""
+    """Map sensitivity.csv metric label back to its registry family key.
+    Args:
+        label [str]: label associated with metrics
+    Returns:
+        str    
+    """
     if label.startswith("RMSE"):
         return "RMSE"
-    if label.startswith("LapseW1"):
-        return "lapse_rate"
     if label.startswith(("Vag/Vg", "|Vag|")):
         return "wind_balance"
-    if label.startswith("div/vort"):
-        return "div_vort"
     if label.startswith("HypsRel"):
         return "hypsometric"
     if label.startswith("|DryAir"):

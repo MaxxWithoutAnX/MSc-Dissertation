@@ -1,4 +1,5 @@
-# Adopted from WeatherBench 2 at https://github.com/google-research/weatherbench2/blob/main/weatherbench2/regridding.py
+""" Adapted from Stormer Github
+"""
 from __future__ import annotations
 
 import dataclasses

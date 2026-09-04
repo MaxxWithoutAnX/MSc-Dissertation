@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader, Subset
 import physq_path
 
 import stormer_precision_harness as H
-from prepare_2021_h5 import MODEL_VARIABLES
+from prepare_year_h5 import MODEL_VARIABLES
 
 CKPT = "/vol/bitbucket/mes25/stormer_checkpoints/stormer_1.40625_patch_size_2.ckpt"
 ROOT_DIR = "/vol/bitbucket/mes25/wb2_h5df"
@@ -165,7 +165,7 @@ def write_outputs(outdir, store, score_lead, leads):
 def build_arg_parser():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--manifest", default="stormer_harness_configs.csv")
-    ap.add_argument("--data-split", default="test_2021", dest="data_split")
+    ap.add_argument("--data-split", default="era5_2021", dest="data_split")
     ap.add_argument("--root-dir", default=ROOT_DIR, dest="root_dir")
     ap.add_argument("--checkpoint", default=CKPT)
     ap.add_argument("--outdir", default="harness_results_2021_stormer")

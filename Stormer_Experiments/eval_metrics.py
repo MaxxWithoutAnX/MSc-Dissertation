@@ -1,3 +1,5 @@
+""" Contains functions for all metrics used in this analysis. 
+"""
 import numpy as np
 import glob as _glob
 import torch
@@ -66,6 +68,8 @@ def lat_weighted_signed_bias(pred, y, vars, lat, log_postfix):
 
 
 def acc(pred, y, clim, vars, lat, log_postfix):
+    """Outdated. No longer used.
+    """
     w_lat = np.cos(np.deg2rad(lat))
     w_lat = w_lat / w_lat.mean()
     w_lat = torch.from_numpy(w_lat).unsqueeze(0).unsqueeze(-1).to(dtype=pred.dtype, device=pred.device)
@@ -85,6 +89,7 @@ def acc(pred, y, clim, vars, lat, log_postfix):
             acc_dict[f"acc_{var}_{log_postfix}"] = num / den
     return acc_dict
 
+# Zonal FFT calculations
 def power_spectrum(field, lat):
     field = field - field.mean(dim=-1, keepdim=True)  # remove zonal mean per row
 
@@ -269,6 +274,8 @@ def effective_resolution_wavelength(ratio, wavelength_km, threshold=0.5):
 
 
 def predictable_scale_wavelength(dke, bg, wavelength_km, frac=0.5):
+    """ Same as effective resolution but using dke
+    """
     dke = np.asarray(dke)
     bg = np.asarray(bg)
     saturated = dke >= frac * 2.0 * bg
@@ -301,6 +308,8 @@ def rqe(pred, y, vars, log_postfix, quantiles=(0.9, 0.99, 0.999, 0.9999)):
     return rqe_dict
 
 def _spherical_grads(field, lat):
+    """ Calculates the gradient of the field with respect to latitude and longitude (phi/lambda)
+    """
     lat = np.asarray(lat)
     W = field.shape[-1]
     phi = torch.from_numpy(np.deg2rad(lat)).to(dtype=field.dtype, device=field.device)
@@ -323,6 +332,8 @@ def _spherical_grads(field, lat):
 
 
 def wind_balance(pred, y, vars, lat, log_postfix):
+    """ Calculates the Geostrophic and Ageostrophic wind magnitudes and ratios
+    """
     lat = np.asarray(lat)
 
     # cos-lat weight, zeroed outside the extra-tropical band, normalised to sum 1 over H
@@ -398,7 +409,8 @@ def _cell_area(lat, W):
 
 
 def global_dry_air_mass(pred, y, vars, lat, log_postfix):
-
+    """Uses the trapezium rule to calcalte the dry air mass given specific humidity
+    """
     q_idx = _levels_for(vars, "specific_humidity_")
     levels = sorted(set(q_idx))                          # ascending hPa -> ascending pressure
 
@@ -407,6 +419,7 @@ def global_dry_air_mass(pred, y, vars, lat, log_postfix):
         return result
 
     with torch.no_grad():
+        # Pressure axis (hPa -> Pa), ascending to match `levels`.
         p = torch.tensor([L * 100.0 for L in levels], dtype=torch.float64, device=pred.device)
 
         # Area element [H, 1] in m^2 per cell, broadcasts over longitude.
@@ -458,6 +471,8 @@ def q_bias_levels(pred, y, vars, lat, log_postfix):
 
 
 def divergence_vorticity(pred, y, vars, lat, log_postfix):
+    """ Old metric. No longer used.
+    """
     lat = np.asarray(lat)
     band = np.abs(lat) >= 20.0
     w = np.cos(np.deg2rad(lat)) * band
@@ -570,6 +585,8 @@ REGIONS_LAPSE = {"tropics": (-30.0, 30.0), "nh_mid": (30.0, 60.0),
 
 
 def _weighted_w1_1d(vp, wp, vt, wt):
+    """Old metric no longer used.
+    """
     vp = np.asarray(vp, dtype=np.float64); wp = np.asarray(wp, dtype=np.float64)
     vt = np.asarray(vt, dtype=np.float64); wt = np.asarray(wt, dtype=np.float64)
     vals = np.concatenate([vp, vt])
@@ -584,6 +601,8 @@ def _weighted_w1_1d(vp, wp, vt, wt):
 
 
 def lapse_rate_wasserstein(pred, y, vars, lat, log_postfix):
+    """Old metric no longer used.
+    """
     z_idx = _levels_for(vars, "geopotential_")
     t_idx = _levels_for(vars, "temperature_")
     result = {f"lapse_regions_{log_postfix}": list(REGIONS_LAPSE)}
@@ -669,7 +688,7 @@ def compute_all_metrics(pred, y, clim, vars, lat, lead_time):
         "lapse_rate": lapse_rate_wasserstein(pred, y, vars, lat, log_postfix=str(lead_time)),
         "neg_humidity": negative_humidity(pred, y, vars, lat, log_postfix=str(lead_time)),
     }
-    if clim is not None:
+    if clim is not None: # Climatology was removed from this study so ACC is never calcualted.
         metrics["ACC"] = acc(pred, y, clim, vars, lat, log_postfix=str(lead_time))
     return metrics
 

@@ -1,7 +1,0 @@
-variant,top8_protected_order
-representative|wind,film|decoder_heads|cond_embed|downsample|encoder_io|enc0_attn|upsample|enc1_attn
-mean|wind,film|decoder_heads|cond_embed|downsample|decoder_io|encoder_io|upsample|enc0_attn
-mean|wind+hyps,film|decoder_heads|cond_embed|decoder_io|downsample|encoder_io|upsample|enc0_attn
-mean|wind+lapse,film|decoder_heads|cond_embed|downsample|encoder_io|upsample|decoder_io|enc0_attn
-mean|wind+both,film|decoder_heads|cond_embed|decoder_io|downsample|encoder_io|upsample|enc0_attn
-first_pc|wind+both,film|decoder_heads|cond_embed|decoder_io|downsample|encoder_io|upsample|enc0_attn

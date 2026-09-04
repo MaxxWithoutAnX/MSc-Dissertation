@@ -1,3 +1,5 @@
+""" Breaks Aurora into layer groups
+"""
 import re
 from collections import OrderedDict
 

@@ -1,3 +1,5 @@
+""" Checks model parameter count, weight size, and peak VRAM per quantisation scheme
+"""
 import torch
 import io
 import gc

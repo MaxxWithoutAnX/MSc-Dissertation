@@ -1,3 +1,5 @@
+""" Same as precision_harness.py in Aurora_Experiemnts but built for Stormer
+"""
 import csv
 import io
 import time
@@ -9,7 +11,7 @@ import torch.nn as nn
 import physq_path
 
 from eval_metrics import compute_all_metrics, difference_kinetic_energy
-from prepare_2021_h5 import MODEL_VARIABLES
+from prepare_year_h5 import MODEL_VARIABLES
 
 
 # --- manifest plumbing (verbatim from Aurora's precision_harness.py) -------------------

@@ -1,4 +1,6 @@
-# lead_robustness.py
+"""Determines if physics vs RMSE advantage changes with lead time. Used as an analysis and in some figures
+ none of those figures entered the dissertation. Kept for reference.
+"""
 import numpy as np
 
 import run_composite_stats as rcs

@@ -1,3 +1,5 @@
+""" Contains functions for all metrics used in this analysis. 
+"""
 import numpy as np
 import glob as _glob
 import torch
@@ -215,9 +217,7 @@ def spectral_div(pred, y, vars, lat, log_postfix):
     return spectral_div
 
 def spectral_res(pred, y, vars, lat, log_postfix):
-    """RMS residual between the normalized pred and truth spectra, computed with BOTH the
-    zonal FFT (`spec_res*`) and the spherical-harmonic transform (`sh_spec_res*`). The SH
-    version is the headline; the zonal one is kept for the appendix similarity check."""
+    """RMS residual between the normalized pred and truth spectra"""
     spectral_res = {}
 
     def _res(psd, psd_gt):
@@ -677,7 +677,7 @@ def compute_all_metrics(pred, y, clim, vars, lat, lead_time):
         "lapse_rate": lapse_rate_wasserstein(pred, y, vars, lat, log_postfix=str(lead_time)),
         "neg_humidity": negative_humidity(pred, y, vars, lat, log_postfix=str(lead_time)),
     }
-    if clim is not None:
+    if clim is not None: # Climatology was removed from this study so ACC is never calcualted.
         metrics["ACC"] = acc(pred, y, clim, vars, lat, log_postfix=str(lead_time))
     return metrics
 

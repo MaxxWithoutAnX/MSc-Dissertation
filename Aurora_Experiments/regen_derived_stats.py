@@ -41,8 +41,6 @@ STAGES = [
      lambda pt, out: ["--results", out]),
     ("lead_robustness", "run_aurora_lead_robustness",
      lambda pt, out: ["--pt", pt, "--outdir", out]),
-    ("axis_variants", "rescore_axes",
-     lambda pt, out: ["--pt", pt, "--outdir", out]),
     ("rmse_crossing", "run_rmse_crossing",
      lambda pt, out: ["--pt", pt, "--outdir", out]),
     ("figure_pt_extracts", "run_figure_pt_extracts",

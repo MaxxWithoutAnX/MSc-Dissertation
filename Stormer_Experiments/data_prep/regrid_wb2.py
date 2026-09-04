@@ -1,3 +1,5 @@
+""" Adapted from Stormer github. Regrids ERA5 NetCDF to 1.40625 deg
+"""
 import os
 import argparse
 import xarray as xr

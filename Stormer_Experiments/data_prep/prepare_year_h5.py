@@ -28,7 +28,7 @@ def build_arg_parser():
     ap.add_argument("--root_dir", required=True, help="regridded 1.40625 NetCDF root")
     ap.add_argument("--save_dir", required=True, help="wb2_h5df root")
     ap.add_argument("--year", type=int, default=2021)
-    ap.add_argument("--split", default="test_2021")
+    ap.add_argument("--split", default="era5_2021")
     ap.add_argument("--chunk_size", type=int, default=10)
     return ap
 
@@ -38,11 +38,15 @@ def main(argv=None):
 
     from process_one_step_data import create_one_step_dataset
 
-    if args.split == "test":
-        raise SystemExit(
-            "--split test would write into the 2020 OAT directory. "
-            "ERA5MultiLeadtimeDataset globs its whole root, so mixing years changes "
-            "len(dataset) and every index. Use --split test_2021.")
+    out_dir = os.path.join(args.save_dir, args.split)
+    if os.path.isdir(out_dir):
+        other = sorted({f.split("_")[0] for f in os.listdir(out_dir)
+                        if f.endswith(".h5")} - {str(args.year)})
+        if other:
+            raise SystemExit(
+                f"{out_dir} already holds {', '.join(other)} data. "
+                "ERA5MultiLeadtimeDataset globs its whole root, so mixing years changes "
+                "len(dataset) and every index. Give each year its own split.")
 
     lat_path = os.path.join(args.save_dir, "lat.npy")
     lat_before = np.load(lat_path) if os.path.exists(lat_path) else None
@@ -64,9 +68,8 @@ def main(argv=None):
                 f"latitude vector; lat-weighted RMSE and the balance metrics are not "
                 f"comparable across this change. Restore lat.npy and investigate.")
 
-    out = os.path.join(args.save_dir, args.split)
-    n = len([f for f in os.listdir(out) if f.endswith(".h5")])
-    print(f"wrote {n} files to {out}", flush=True)
+    n = len([f for f in os.listdir(out_dir) if f.endswith(".h5")])
+    print(f"wrote {n} files to {out_dir}", flush=True)
 
 
 if __name__ == "__main__":

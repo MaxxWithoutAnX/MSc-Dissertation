@@ -15,7 +15,7 @@ mkdir -p logs
 
 time python run_stormer_adaln_probe.py \
     --root-dir /vol/bitbucket/mes25/wb2_h5df \
-    --data-split test_2021 \
+    --data-split era5_2021 \
     --checkpoint /vol/bitbucket/mes25/stormer_checkpoints/stormer_1.40625_patch_size_2.ckpt \
     --n-inits 12 --score-lead 120
 

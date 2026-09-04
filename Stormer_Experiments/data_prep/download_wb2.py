@@ -1,3 +1,5 @@
+""" Download WB2 data. Adapted from Stormer Github
+"""
 import argparse
 import asyncio
 import os
@@ -44,6 +46,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--file", type=str, required=True)
     parser.add_argument("--save_dir", type=str, required=True)
+    parser.add_argument("--start_year", type=int, default=2020,
+                        help="First year to download (inclusive).")
+    parser.add_argument("--end_year", type=int, default=2021,
+                        help="Last year to download (INCLUSIVE, as in regrid_wb2.py).")
     args = parser.parse_args()
 
     os.makedirs(args.save_dir, exist_ok=True)
@@ -52,7 +58,7 @@ def main():
         storage_options={"token": "anon", "timeout": 60},
     )
 
-    years = list(range(2020, 2023 + 1))
+    years = list(range(args.start_year, args.end_year + 1))
     variables = list(ds.keys())
 
     for var in tqdm(variables, desc="variables", position=0):

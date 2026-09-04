@@ -1,3 +1,5 @@
+""" Sane as build_cost_tables.py in Aurora_Experiments but built for Stormer
+"""
 import os
 
 import torch

@@ -1,4 +1,5 @@
-# run_frontiers.py
+""" Creates the frontiers.
+"""
 import physq_path
 
 import csv
@@ -24,6 +25,8 @@ PANEL_TITLE = {"balance": "balance  (guide axis)",
 
 
 def score_on_axis(points, d_axis, axis="standard"):
+    """Rescores the config on another axis
+    """
     for p in points:
         if "config" in p:
             p[axis] = _axis_sum(d_axis, p["config"], (axis,))[axis]
@@ -31,6 +34,8 @@ def score_on_axis(points, d_axis, axis="standard"):
 
 
 def _write_frontier_csv(path, points, floor):
+    """ Writes a frontier's points as cost/balance/consevation/protectd/config to a csv
+    """
     with open(path, "w", newline="") as f:
         w = csv.writer(f)
         has_std = bool(points) and "standard" in points[0]
@@ -45,9 +50,8 @@ def _write_frontier_csv(path, points, floor):
 
 
 def write_guide_order_csv(path, points, floor):
-    """The unfiltered guide-budget sequence, for exact-budget anticontrol matching in
-    select_harness_configs.match_at_budget (see guide_budget_frontier for why the
-    Pareto-filtered frontier is too sparse to match against)."""
+    """ Used for control matchihng budgets. Used by select_harness_configs.match_at_budget
+    """
     with open(path, "w", newline="") as f:
         w = csv.writer(f)
         w.writerow(["k", "cost", "balance", "conservation", "protected", "config"])
@@ -60,7 +64,8 @@ def write_guide_order_csv(path, points, floor):
 
 def write_random_csv(scheme_csvs, cost, floor, path, seeds=range(20), lead=120):
     """One row per (seed, k-protected) random protection order: seed,k,cost,config. The
-    selector filters these to a target cost for the random anticontrol band."""
+    selector filters these to a target cost for the random anticontrol band.
+    """
     d_eval = load_distortion_table(scheme_csvs, lead=lead, axes=CONSISTENCY)
     groups = list(d_eval)
     with open(path, "w", newline="") as f:
@@ -81,7 +86,7 @@ def write_random_csv(scheme_csvs, cost, floor, path, seeds=range(20), lead=120):
 def _cost_label(cost_kind, floor):
     """X-axis label. The two frontiers share this plotting code but NOT their cost units:
     'flop' is a dimensionless share of quantisable Linear FLOPs (0..1), 'weight' is absolute
-    weight bytes. Labelling both 'protection cost' silently conflated them."""
+    weight bytes. """
     if cost_kind == "flop":
         return f"share of quantisable Linear FLOPs at bf16  ({floor} floor)"
     return f"model weight bytes  ({floor} floor)"
@@ -153,15 +158,28 @@ def run_dev_frontier_W8(lead=120, outdir="."):
 
 
 def run_frontier(scheme_csvs, precisions, floor, cost_kind, tag, lead=120, outdir=".",
-                 min_effect_frac=0.0, axis_floor=0.0):
+                 min_effect_frac=0.0):
+    """ Logic to run and create csv/png for the frontiers.
+    Args:
+        scheme_csvs [dict]          : {precision: sensitivity.csv path}.
+        precisions [list[str]]      : candidates. precisions[0] is the fully quantised run
+        floor [str]                 : unprotected precision, used for the cost table and CSV encoding
+        cost_kind [str]             : "flop" (Frontier B, protected-FLOP-fraction) or "weight"
+                                    (Frontier A, model-weight-bytes)
+        tag [str]                   : filename stem, e.g. "B_W8A8"
+        lead [int]                  : lead time in hours
+        outdir [str]                : created if absent
+        min_effect_frac [float]     : removes points if damage of group below this*max SVR
+    Returns:
+        dict: {"physics", "rmse", "band", "b2"}. Writes frontier_<tag>_{physics,rmse}.csv,
+            guide_order_<tag>_rmse.csv, protected_set_<tag>.csv and frontier_<tag>.png.
+    """
     os.makedirs(outdir, exist_ok=True)
     ct = torch.load("cost_tables.pt", weights_only=False)
     d_guide_p, d_eval, ax_p = load_tables(scheme_csvs, "physics", lead=lead,
-                                          min_effect_frac=min_effect_frac,
-                                          axis_floor=axis_floor)
+                                          min_effect_frac=min_effect_frac)
     d_guide_r, _, ax_r = load_tables(scheme_csvs, "rmse", lead=lead,
-                                     min_effect_frac=min_effect_frac,
-                                     axis_floor=axis_floor)
+                                     min_effect_frac=min_effect_frac)
     groups = list(d_eval)
     if cost_kind == "flop":
         cost = flop_cost(groups, ct, floor=floor)
@@ -199,22 +217,21 @@ def run_frontier(scheme_csvs, precisions, floor, cost_kind, tag, lead=120, outdi
     return {"physics": phys, "rmse": rmse, "band": band, "b2": sweep}
 
 
-def run_frontier_B(scheme="W8A8", lead=120, outdir=".", min_effect_frac=0.0,
-                   axis_floor=0.0):
+def run_frontier_B(scheme="W8A8", lead=120, outdir=".", min_effect_frac=0.0):
     """Frontier B: {scheme, bf16}, floor=scheme, protected-FLOP-fraction axis (the
     deployment/headline frontier). scheme='W8A8_sq' gives the SmoothQuant overlay."""
     csv_path = f"ablation_analysis/ablations_{scheme}/sensitivity.csv"
     return run_frontier({scheme: csv_path}, [scheme, "bf16"], scheme, "flop",
-                        f"B_{scheme}", lead, outdir, min_effect_frac, axis_floor)
+                        f"B_{scheme}", lead, outdir, min_effect_frac)
 
 
 def run_frontier_A(w4_csv="ablation_analysis/ablations_W4/sensitivity.csv",
                    w8_csv="ablation_analysis/ablations_W8/sensitivity.csv",
-                   lead=120, outdir=".", min_effect_frac=0.0, axis_floor=0.0):
+                   lead=120, outdir=".", min_effect_frac=0.0):
     """Frontier A: {W4, W8, bf16}, floor=W4, model-weight-bytes axis (the compression /
     model-size scientific frontier)."""
     return run_frontier({"W4": w4_csv, "W8": w8_csv}, ["W4", "W8", "bf16"], "W4",
-                        "weight", "A_W4W8", lead, outdir, min_effect_frac, axis_floor)
+                        "weight", "A_W4W8", lead, outdir, min_effect_frac)
 
 
 def main():

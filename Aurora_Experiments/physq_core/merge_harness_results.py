@@ -1,4 +1,6 @@
-# merge_harness_results.py
+""" Merges a second harness run into an existing run. Used as SmoothQuant was run seperately from the remaining configs
+    and when runs were added later after the initial runs were done and needed to change some configurations.
+"""
 import argparse
 import csv
 import os

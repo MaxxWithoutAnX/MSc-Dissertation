@@ -1,3 +1,5 @@
+""" Breaks Stormer into layer groups
+"""
 import re
 from collections import OrderedDict
 

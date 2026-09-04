@@ -1,4 +1,4 @@
-"""OAT per-layer quantisation-sensitivity analysis for the sampled-2020 ablations."""
+"""OAT per-layer quantisation-sensitivity analysis for the sampled 2020 ablations."""
 import physq_path
 import argparse
 import csv

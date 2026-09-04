@@ -13,6 +13,8 @@ export MPLBACKEND=Agg
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 # --- Config ---
+export STORMER_H5_ROOT=/vol/bitbucket/mes25/wb2_h5df
+export STORMER_SPLIT=era5_2020   # 2020 = ablation year; harness uses era5_2021
 export ABLATION_N_INITS=48   # 48 inits (~4/month, seasonally spread); 0 = all 12h-stride inits
 export SAMPLED_YEAR=2020     # recipe naming; must match the smoothquant inference run
 export SAMPLED_PER_MONTH=4

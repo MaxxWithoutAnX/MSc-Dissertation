@@ -1,4 +1,6 @@
-# figure_core.py
+""" Data preparation functions for figures created in figure_specs.py. AI was largely used in this to support graphs with guidance
+    from author on what they wanted. AI did not generate the ideas for graphs itself.
+"""
 import csv
 import math
 import os
@@ -997,9 +999,15 @@ def _cumulative(values):
     return {"x": list(xs), "y": list(cum), "n_groups": int(v.size), "top1": float(cum[0])}
 
 
-def _distortion_by_group(path, lead, scheme, axis):
+CONCENTRATION_VALUE_COL = "svr"
+
+
+def _distortion_by_group(path, lead, scheme, axis, value_col=CONCENTRATION_VALUE_COL):
+    """Per-group axis value on the ungated |SVR| basis.
+    """
     from allocator import load_distortion_table
-    d = load_distortion_table({scheme: path}, lead=lead, axes=(axis,), min_effect_frac=0.0)
+    d = load_distortion_table({scheme: path}, lead=lead, axes=(axis,),
+                              value_col=value_col, min_effect_frac=0.0)
     return {g: d[g][scheme][axis] for g in d}
 
 
@@ -1501,7 +1509,7 @@ FRONTIER_A_RMSE = ("W8A8_floor", "W8A8_rmse_knee", "W8A8_rmse_span1", "W8A8_rmse
 FRONTIER_B_PHYS = ("W4W8_floor", "W4W8_knee", "W4W8_span1", "W4W8_span2", "W4W8_span3")
 FRONTIER_B_RMSE = ("W4W8_floor", "W4W8_rmse_span1", "W4W8_rmse_span2", "W4W8_rmse_span3")
 FRONTIER_RANDOM = ("W8A8_rand_0", "W8A8_rand_1", "W8A8_rand_2", "W8A8_rand_3")
-# The positional and over-funded-RMSE arms were measured for BOTH floors but were never
+# The heuristic (protect-I/O) and over-funded-RMSE arms were measured for BOTH floors but never
 # listed in any frontier tuple, so neither panel drew them. They are controls, not
 # scalarisation points, so they are scattered rather than joined into a frontier line.
 FRONTIER_A_PROTECT = ("W8A8_protect_io",)
@@ -1511,8 +1519,45 @@ FRONTIER_B_RMSEUP = ("W4W8_rmseup_span1",)
 FRONTIER_PROBES = ("W8A8_probe_divergent", "W8A8_probe_rmse_favoured")
 
 
-def prepare_allocation_frontier(results_csv, axis="balance", exclude=()):
+W4_FLOOR = "W4"
+
+
+def corrected_w4_cost(cost_table, rows):
+    """Frontier A budgets recomputed on the corrected weight-memory axis: {tag: bytes}.
+    harness_results.csv carries `predicted_cost` from a manifest solved when the
+    unquantised tier was charged 16 bits; it is 32 (autocast leaves the parameters in
+    fp32 -- see cost_tables.STORAGE_BITS), so the stored column is up to 2x low. Recomputed
+    here rather than rewritten into the CSV, which stays a frozen measured artifact.
+    Returns {} if the cost table is absent; the caller then falls back to the column."""
+    if not cost_table or not os.path.exists(cost_table):
+        return {}
+    import torch
+    from cost_tables import STORAGE_BITS
+    ct = torch.load(cost_table, map_location="cpu", weights_only=False)
+    out = {}
+    for tag, r in rows.items():
+        if r.get("floor") != W4_FLOOR:
+            continue
+        sel = {}
+        for part in filter(None, (r.get("config") or "").split(";")):
+            prec, gs = part.split(":", 1)
+            for g in gs.split("|"):
+                sel[g] = prec
+        if any(g not in ct for g in sel):
+            continue
+        out[tag] = sum(ct[g]["params"] * STORAGE_BITS[sel.get(g, W4_FLOOR)] / 8.0 for g in ct)
+    return out
+
+
+def prepare_allocation_frontier(results_csv, axis="balance", exclude=(), cost_table=None,
+                                show_rmseup=True, extra_axes_csv=None):
     rows = {r["tag"]: r for r in read_csv(results_csv)}
+    for extra in (read_csv(extra_axes_csv) if extra_axes_csv else []):
+        dst = rows.get(extra.get("tag"))
+        if dst is not None:
+            dst.update({k: v for k, v in extra.items() if k not in dst})
+    for tag, c in corrected_w4_cost(cost_table, rows).items():
+        rows[tag]["predicted_cost"] = repr(c)
     exclude = set(exclude)
 
     def series(tags, need_cost=True, honour_exclude=True):
@@ -1549,14 +1594,14 @@ def prepare_allocation_frontier(results_csv, axis="balance", exclude=()):
                  "random": series(FRONTIER_RANDOM),
                  "probe": series(FRONTIER_PROBES, need_cost=False),
                  "protect_io": series(FRONTIER_A_PROTECT),
-                 "rmseup": series(FRONTIER_A_RMSEUP),
+                 "rmseup": series(FRONTIER_A_RMSEUP) if show_rmseup else [],
                  "excluded": dropped(FRONTIER_A_PHYS + FRONTIER_A_RMSE)},
                 {"title": "W4W8 family  (4-bit backbone)", "logx": True,
                  "xlabel": "allocation cost  (model weight bytes, log;  6.3e8 = all-W4)",
                  "physics": series(FRONTIER_B_PHYS), "rmse": series(FRONTIER_B_RMSE),
                  "random": [], "probe": [],
                  "protect_io": series(FRONTIER_B_PROTECT),
-                 "rmseup": series(FRONTIER_B_RMSEUP),
+                 "rmseup": series(FRONTIER_B_RMSEUP) if show_rmseup else [],
                  "excluded": dropped(FRONTIER_B_PHYS + FRONTIER_B_RMSE)}],
             "ceiling": (series(("ceiling",)) or [(None, None)])[0][1]}
 
@@ -1592,11 +1637,18 @@ def draw_allocation_frontier(data, outdir, name, title, legend_loc="upper right"
         if p["logx"]:
             ax.set_xscale("log")
         ax.set_yscale("log")
-        if data.get("ceiling"):
-            ax.axhline(data["ceiling"], color="#888", ls=":", lw=1.3, zorder=1)
+        # Ceiling and ylabel are PER-PANEL with a whole-figure fallback. When the panels
+        # are two allocation families on one axis (figA20/A28) they share both. When they
+        # are one family on two axes (figA20b) they share neither -- each axis has its own
+        # unquantised ceiling and its own name.
+        ceiling = p.get("ceiling", data.get("ceiling"))
+        if ceiling:
+            ax.axhline(ceiling, color="#888", ls=":", lw=1.3, zorder=1)
         ax.set_title(p["title"], fontsize=12, fontweight="bold")
-        ax.set_xlabel(p["xlabel"], fontsize=9)
-        ax.set_ylabel(f"measured {data['axis']} distortion @120 h  (SVR, log)")
+        if not data.get("supxlabel"):
+            ax.set_xlabel(p["xlabel"], fontsize=9)
+        ax.set_ylabel(p.get("ylabel")
+                      or f"measured {data['axis']} distortion @120 h  (SVR, log)")
         style(ax)
         ax.grid(True, which="both", ls="-", lw=0.4, color="#e8e8e8")
     handles = [Line2D([], [], color=C["physics"], marker="o", lw=2, mec="white",
@@ -1608,22 +1660,51 @@ def draw_allocation_frontier(data, outdir, name, title, legend_loc="upper right"
                Line2D([], [], color=C["warn"], marker="X", ls="", label="probe (control)")]
     if any(p.get("protect_io") for p in panels):
         handles.append(Line2D([], [], color=C["neutral"], marker="D", ls="", mec="white",
-                              label="positional (control)"))
+                              label="heuristic (control)"))
     if any(p.get("rmseup") for p in panels):
         handles.append(Line2D([], [], color=C["rmse"], marker="s", ls="", mfc="none",
                               mew=1.6, label="over-funded RMSE (anticontrol)"))
-    if data.get("ceiling"):
-        handles.append(Line2D([], [], color="#888", ls=":", lw=1.3,
-                              label="unquantised ceiling"))
     if any(p.get("excluded") for p in panels):
         handles.append(Line2D([], [], color=C["physics"], marker="o", ls="", mfc="none",
-                              mew=1.6, label="off-scalarisation (excluded)"))
+                              mew=1.6, label="conservation-weighted (off this curve)"))
     pad = 1.6 if legend_loc.startswith("lower") else 0.5
     axes[0][0].legend(handles=handles, frameon=False, fontsize=9, loc=legend_loc,
                       borderaxespad=pad)
     fig.suptitle(title, fontsize=13, fontweight="bold", y=0.985)
-    fig.tight_layout(rect=[0, 0, 1, 0.93])
+    if data.get("supxlabel"):
+        fig.supxlabel(data["supxlabel"], fontsize=9.5)
+    fig.tight_layout(rect=[0, 0.03 if data.get("supxlabel") else 0, 1, 0.93])
     return save(fig, outdir, name)
+
+
+AXIS_PAIR_LABELS = {"standard": "RMSE", "balance_rescored": "balance",
+                    "conservation_rescored": "conservation"}
+
+
+def prepare_axis_pair_frontier(results_csv, axes, family=0, exclude=(), cost_table=None,
+                               extra_axes_csv=None, show_rmseup=True, panel_titles=None):
+    """ONE allocation family scored on TWO axes -- the transpose of the figure above.
+
+    prepare_allocation_frontier returns two panels that are two families (W8A8, W4W8) on
+    one axis; this returns two panels that are one family on two axes. `family` indexes
+    into that panel list: 0 = W8A8, 1 = W4W8.
+
+    THE AXES MUST SHARE AN SVR DENOMINATOR, or the panels are in different units and the
+    cross-panel reading the figure exists for is meaningless. This is why the RMSE pairing
+    takes `balance_rescored` and not the frozen `balance` -- see _b_rmse_axis."""
+    panels = []
+    for axis in axes:
+        d = prepare_allocation_frontier(results_csv, axis=axis, exclude=exclude,
+                                        cost_table=cost_table, show_rmseup=show_rmseup,
+                                        extra_axes_csv=extra_axes_csv)
+        p = dict(d["panels"][family])
+        label = AXIS_PAIR_LABELS.get(axis, axis)
+        p["ceiling"] = d["ceiling"]
+        p["ylabel"] = f"measured {label} distortion @120 h  (SVR, log)"
+        p["title"] = (panel_titles or {}).get(axis, f"{label} axis")
+        panels.append(p)
+    return {"axis": axes[0], "panels": panels, "ceiling": None,
+            "excluded_tags": sorted(exclude)}
 
 
 # ------------------------------------------------------------------ per-variable RMSE

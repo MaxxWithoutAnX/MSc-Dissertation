@@ -1,3 +1,7 @@
+""" Functions to create and measure one quantised configuration end to end. Builds a uqantised model, 
+rolls it out over initialisations, scores from eval_metrics and get latency, VRAM, etc, Then write to
+harness_results.csv and harness_result.pt
+"""
 import physq_path
 import csv
 import io

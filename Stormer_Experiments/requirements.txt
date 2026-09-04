@@ -4,7 +4,6 @@
 #   conda create -n stormer-climate python=3.11.5
 #   conda activate stormer-climate
 #   pip install -r requirements.txt
-#   pip install -e git+https://github.com/tung-nd/stormer.git@58dfee5a6037399a40fefd492bc00421e0c885a8#egg=stormer
 
 
 --extra-index-url https://download.pytorch.org/whl/cu121

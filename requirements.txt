@@ -4,7 +4,13 @@
 #   conda create -n climate python=3.11.5
 #   conda activate climate
 #   pip install -r requirements.txt
-#   pip install -e git+https://github.com/tung-nd/stormer.git@58dfee5a6037399a40fefd492bc00421e0c885a8#egg=stormer
+#
+#   # Stormer installs from a clone and should end in Stormer_Experiments/ 
+#   git clone https://github.com/tung-nd/stormer.git 
+#   cd Stormer_Experiments/stormer
+#   git checkout 58dfee5a6037399a40fefd492bc00421e0c885a8
+#   pip install -e .
+#   cd ../..
 #
 # For a single-model environment instead, use Aurora_Experiments/requirements.txt
 # or Stormer_Experiments/requirements.txt.

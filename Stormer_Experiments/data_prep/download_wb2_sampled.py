@@ -1,4 +1,4 @@
-"""Download only the ERA5 timesteps a sampled Stormer run actually reads.
+"""Download only the ERA5 timesteps a sampled Stormer run actually reads. 
 
     save_dir/
       land_sea_mask.nc, geopotential_at_surface.nc, ...     (constants, full field)

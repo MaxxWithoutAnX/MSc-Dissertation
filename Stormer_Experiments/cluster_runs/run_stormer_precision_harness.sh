@@ -16,7 +16,7 @@ mkdir -p logs
 time python run_stormer_precision_harness.py \
     --manifest stormer_harness_configs.csv \
     --root-dir /vol/bitbucket/mes25/wb2_h5df \
-    --data-split test_2021 \
+    --data-split era5_2021 \
     --checkpoint /vol/bitbucket/mes25/stormer_checkpoints/stormer_1.40625_patch_size_2.ckpt \
     --outdir harness_results_2021_stormer \
     --n-inits 12 \

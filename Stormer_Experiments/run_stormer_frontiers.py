@@ -1,3 +1,5 @@
+""" Generates Stormer's frontiers.
+"""
 import physq_path
 
 import os
@@ -17,7 +19,8 @@ SCHEME_CSV = {
     "W8A8_sq": "ablation_analysis/ablations_W8A8_sq/sensitivity.csv",
 }
 
-DEFAULT_OUTDIR = os.path.join(HERE, "frontiers")
+
+DEFAULT_OUTDIR = os.path.join(HERE, "frontiers", "corrected")
 
 
 def _csv(scheme):

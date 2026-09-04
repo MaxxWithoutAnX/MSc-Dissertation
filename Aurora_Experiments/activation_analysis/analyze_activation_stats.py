@@ -1,3 +1,5 @@
+""" Creates graphs of the activation analysis stored metrics.
+"""
 import os, re, csv
 import torch
 import numpy as np

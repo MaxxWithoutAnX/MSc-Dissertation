@@ -1,3 +1,5 @@
+"""Shared metric registry, run loading and the SVR/bootstrap statistics.
+"""
 import datetime
 import os
 from collections import namedtuple
@@ -59,7 +61,6 @@ SPEC_RES_LOG_LMAX_FRAC = 0.5
 # levels/pairs lists are stored in-band under group-specific prefixes
 _LEVELS_KEY = {
     "wind_balance": "wbal_levels",
-    "div_vort": "divvort_levels",
     "dke": "dke_levels",
     "dke_pert": "dke_levels",
     "q_bias": "qbias_levels",
@@ -282,7 +283,7 @@ MetricSpec = namedtuple("MetricSpec", "label group name_fmt kind transform deriv
 
 AGG_CLASS = {
     "RMSE": "standard",                    # + ACC/bias when added to the registry
-    "wind_balance": "balance", "div_vort": "balance", "hypsometric": "balance",
+    "wind_balance": "balance", "hypsometric": "balance",
     "dry_air_mass": "conservation", "neg_humidity": "conservation",
     "spec_div": "spectral", "spec_res": "spectral",
     "spec_res_log": "spectral", "spec_div_w1": "spectral",
@@ -382,10 +383,6 @@ def metric_registry(run):
                                     f"wbal_ageo_geo_pred_{L}_{{lt}}", "error_pos"))
             specs.append(MetricSpec(f"|Vag| {L}hPa", "wind_balance",
                                     f"wbal_vag_pred_{L}_{{lt}}", "error_pos"))
-    if "div_vort" in sample:
-        for L in [L for L in PROFILE_LEVELS_HEADLINE if L in run.levels("div_vort")]:
-            specs.append(MetricSpec(f"div/vort {L}hPa", "div_vort",
-                                    f"divvort_ratio_pred_{L}_{{lt}}", "error_pos"))
     if "hypsometric" in sample:
         pair = _mid_trop_pair(run.hyps_pairs())
         specs.append(MetricSpec(f"HypsRel {pair}", "hypsometric", None, "error_pos",

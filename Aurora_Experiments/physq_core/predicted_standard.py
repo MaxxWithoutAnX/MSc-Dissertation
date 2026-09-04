@@ -2,7 +2,8 @@
 
 Two modes. The default reproduces the frozen RMSE (standard) sidecar from a manifest, under
 that manifest's own gate. `--from-results` instead rebuilds all three axes, UNGATED, from the
-`config` column of harness_results.csv -- the record of what the harness actually ran."""
+`config` column of harness_results.csv -- the record of what the harness actually ran.
+"""
 # predicted_standard.py
 import argparse
 import csv

@@ -1,3 +1,5 @@
+""" Rollout of quantised Stormer
+"""
 print('hi', flush=True)
 import os
 import numpy as np
@@ -119,7 +121,8 @@ quantize_(quant_model, Int8WeightOnlyConfig(), filter_fn=_is_linear)
 print('quantised model!')
 
 # load data
-root_dir = r'C:\Users\maxsh\era5_processed'
+root_dir = os.environ.get("STORMER_H5_ROOT", r'C:\Users\maxsh\era5_processed')
+split = os.environ.get("STORMER_SPLIT", "era5_2020")
 norm_dir = r'C:\Users\maxsh\Stormer\stormer\normalization_constants'
 normalize_mean = dict(np.load(os.path.join(norm_dir, "normalize_mean.npz")))
 normalize_mean = np.concatenate([normalize_mean[v] for v in variables], axis=0)
@@ -127,7 +130,7 @@ normalize_std = dict(np.load(os.path.join(norm_dir, "normalize_std.npz")))
 normalize_std = np.concatenate([normalize_std[v] for v in variables], axis=0)
 inp_transform = transforms.Normalize(normalize_mean, normalize_std)
 dataset = ERA5MultiLeadtimeDataset(
-    root_dir=os.path.join(root_dir, "test"),
+    root_dir=os.path.join(root_dir, split),
     variables=variables,
     transform=inp_transform,
     list_lead_times=[24, 72, 120, 168],  # 1, 3, 5, 7 days

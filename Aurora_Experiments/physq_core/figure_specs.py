@@ -1,4 +1,5 @@
-# figure_specs.py
+"""Generates Figures used for data dissertatin. More figures created than used in dissertation and kept as legacy/reference.
+"""
 import dataclasses
 import gc
 import glob
@@ -147,37 +148,6 @@ def _b_axis_decomposition_stormer(roots, outdir):
         "Stormer: distortion decomposed by axis")
 
 
-# ------------------------------------------------------------------ axis robustness
-
-def _b_axis_robustness(roots, outdir):
-    r = roots["aurora"]
-    rows = fc.read_csv(r.rpath("harness_axis_variants.csv"))
-    if not rows:
-        print("  skip axis_robustness (no harness_axis_variants.csv)")
-        return None
-    by = {}
-    for row in rows:
-        by.setdefault(row["variant"], {})[row["tag"]] = float(row["value"])
-    variants = [v for v in ("dry_only", "dry_and_negq", "multi_family") if v in by]
-    pairs = [("W8A8_span1", "W8A8_rmse_span1"), ("W8A8_knee", "W8A8_rmse_knee")]
-    series = []
-    for (p, q), col in zip(pairs, (fc.C["physics"], fc.C["accent"])):
-        vals = []
-        for v in variants:
-            a, b = by[v].get(p), by[v].get(q)
-            vals.append(b / a if a and b and a > 0 else float("nan"))
-        series.append((f"{p.replace('W8A8_', '')} vs {q.replace('W8A8_', '')}",
-                       vals, None, col))
-    span1 = [v for v in series[0][1] if v == v]      # NaN-safe: NaN != NaN
-    rng = (f"{min(span1):.1f}x-{max(span1):.1f}x across definitions" if span1
-           else "across definitions")
-    return fc.draw_dotplot(
-        variants, series, outdir, "figA06_axis_robustness.png",
-        "Physics advantage under three axis definitions",
-        "physics advantage  (x, log;  >1 = physics better)",
-        logx=True, refline=1.0)
-
-
 # ------------------------------------------------------------------ activation blindness
 
 def _b_activation_blindness(roots, outdir):
@@ -309,7 +279,7 @@ def _b_concentration(roots, outdir):
             continue
         ax.plot([0] + c["x"], [0] + c["y"], marker="o", ms=4,
                 color=fc.C["aurora"] if model == "Aurora" else fc.C["stormer"],
-                label=f"{model}  ({c['n_groups']} groups, top-1 = {c['top1']:.0%})")
+                label=f"{model}  ({c['n_groups']} groups, top-1 = {c['top1']:.1%})")
     ax.plot([0, 1], [0, 1], color="#999", lw=0.9, ls="--", label="uniform (no localisation)")
     ax.set_xlabel("fraction of layer groups, ordered most-damaging first")
     ax.set_ylabel(f"cumulative share of balance distortion @{lead}h")
@@ -524,10 +494,6 @@ REGISTRY: list = [
                inputs=("stormer_paired_wind_balance.csv",
                        "stormer_paired_dry_air_mass.csv"),
                title="Stormer: distortion decomposed by axis"),
-    FigureSpec(id="axis_robustness", number=6, section="appendix", model="aurora",
-               build=_b_axis_robustness,
-               inputs=("harness_axis_variants.csv",),
-               title="Physics advantage under three axis definitions"),
     FigureSpec(id="activation_blindness", number=7, section="appendix", model="aurora",
                build=_b_activation_blindness,
                # the second entry is the FALLBACK the build tries when _28 is absent
@@ -722,56 +688,6 @@ def _b_additivity(roots, outdir):
     if not rows:
         return None
     fc.write_additivity_csv(rows, os.path.join(outdir, "additivity_by_scheme.csv"))
-
-    def cell(model, scheme, bucket):
-        for r in rows:
-            if (r["model"], r["scheme"], r["bucket"]) == (model, scheme, bucket):
-                return r
-        return None
-
-    aw4, a8 = cell("Aurora", "W4", "physics"), cell("Aurora", "W8A8", "physics")
-    sw4 = cell("Stormer", "W4", "physics")
-    dropped = sum(r["n_dropped"] for r in rows)
-    bits = []
-    if aw4 and a8 and sw4:
-        bits.append(
-            "Aurora's W4 table is the only cell where the assumption fails: median ratio "
-            "{aw4:.2f} with {ak}/{an} metrics inside the +/-20% band, against {a8:.2f} "
-            "({a8k}/{a8n}) at W8A8 and {sw4:.2f} ({sk}/{sn}) for Stormer at W4. Aurora's W4W8 "
-            "frontier is exactly where physics-guided allocation reverses sign (figA13); "
-            "Stormer's W4W8, whose surrogate stays additive, does not reverse. Marked cells "
-            "are ALL SIGN FLIPS -- pairs landing on opposite sides of 1.0 on the two "
-            "endpoints.".format(
-                aw4=aw4["median"], ak=aw4["n_ok"], an=aw4["n"],
-                a8=a8["median"], a8k=a8["n_ok"], a8n=a8["n"],
-                sw4=sw4["median"], sk=sw4["n_ok"], sn=sw4["n"]))
-    bits.append(
-        "Two further readings: the physics axes are more additive than RMSE in six of the "
-        "seven scheme cells, so the OAT surrogate is better founded for physics-guided "
-        "allocation than for the RMSE-guided baseline it is measured against; and ratios sit "
-        "above 1 almost everywhere -- interactions are sub-additive, so the surrogate "
-        "OVER-predicts damage and errs conservative. With figA09 (rank transfers, level does "
-        "not) the surrogate is correct in RANK and conservative in LEVEL. "
-        "THE SEVENTH CELL GOES THE OTHER WAY. At Stormer W4 the RMSE bucket is the more "
-        "additive one on both measures -- median |log10 ratio| 0.0426 against physics' "
-        "0.0501, and 6/6 metrics inside the band against 10/12 -- so 'consistently' would be "
-        "an overstatement of the project's own data.")
-    bits.append(
-        "EACH ROW SHOWS ITS SAMPLE, not a summary alone: a box and whiskers where the cell "
-        "has at least ten metrics and the points themselves where it does not. That "
-        "distinction is load-bearing here. Stormer's W8 and W8A8 RMSE cells rest on a SINGLE "
-        "metric each, which a median and an interquartile bar rendered exactly as "
-        "authoritatively as Aurora's fourteen-metric physics cells. The physics rows are also "
-        "pseudo-replicated -- Aurora's fourteen come from about five metric families -- "
-        "though that is not what drives the result: re-aggregating family-first moves the "
-        "physics medians by at most 0.02 (0.910 to 0.923 at Aurora W8, 1.123 to 1.128 at "
-        "W8A8) and leaves every RMSE median unchanged. It does collapse the RMSE cells to "
-        "n=1 throughout, which is why figA31 pools schemes rather than splitting them.")
-    if dropped:
-        bits.append(
-            "{d} metric-rows had a non-positive ratio (OAT sum and full-quant delta of "
-            "OPPOSITE SIGN) and are excluded: unplottable on a log axis, and a sign error is "
-            "a different failure from a scale error.".format(d=dropped))
     return fc.draw_additivity(rows, outdir, "figA15_additivity.png", ADDITIVITY_TITLE,
                               boxes=True)
 
@@ -1047,7 +963,7 @@ def _b_concentration_by_axis(roots, outdir):
             top = fc.concentration_top_group(srcs[model], lead=lead, axis=axis)
             panel.plot([0] + c["x"], [0] + c["y"], ls=ls, lw=1.7, marker=marker, ms=4.4,
                        color=fc.C[colour_key], mew=1.0, mec="white",
-                       label=f"{axis_label}  (top-1 {c['top1']:.0%}, {top})")
+                       label=f"{axis_label}  (top-1 {c['top1']:.1%}, {top})")
         panel.set_xlim(-0.02, 1.02)
         panel.set_ylim(0, 1.05)
         panel.set_title(f"{model}   ({n_groups} layer groups)", fontsize=11,
@@ -1067,58 +983,6 @@ REGISTRY.append(
                inputs=("ablation_analysis/ablations_W8A8/sensitivity.csv",
                        "ablation_analysis/ablations_W8A8/sensitivity.csv"),
                title=CONCENTRATION_AXIS_TITLE,
-))
-
-
-# --------------------------------------------------- transfer to un-optimised metrics
-
-HELDOUT_TITLE = "Effect sizes on held-out metric families"
-
-HELDOUT_TIERS = [
-    ("held_out", "never guided, never scored", "#0072B2"),
-    ("variant", "spectral re-parameterisations", "#4C9FD4"),
-    ("partial", "in the guide, not in the endpoint", "#E69F00"),
-    ("objective", "the reported endpoints", "#999999"),
-]
-
-
-def _b_heldout_families(roots, outdir):
-    r = roots["aurora"]
-    src = r.rpath("harness_heldout_families.csv")
-    rows = fc.read_csv(src)
-    if not rows:
-        print("  skip heldout_families (no harness_heldout_families.csv -- "
-              "run run_heldout_families.py)")
-        return None
-
-    by_tier = {}
-    for row in rows:
-        by_tier.setdefault(row["tier"], []).append(row)
-    order = [(t, lab, col) for t, lab, col in HELDOUT_TIERS if by_tier.get(t)]
-    labels = [row["family"] for t, _, _ in order for row in by_tier[t]]
-    if not labels:
-        return None
-
-    series = []
-    for tier, tier_label, colour in order:
-        vals = []
-        for t2, _, _ in order:
-            for row in by_tier[t2]:
-                vals.append(float(row["ratio"]) if t2 == tier else float("nan"))
-        series.append((tier_label, vals, None, colour))
-
-    return fc.draw_dotplot(
-        labels, series, outdir, "figA18_heldout_families.png",
-        HELDOUT_TITLE,
-        "physics advantage on this family  (x, log;  >1 = physics less distorted)",
-        logx=True, refline=1.0,)
-
-
-REGISTRY.append(
-    FigureSpec(id="heldout_families", number=18, section="appendix", model="aurora",
-               build=_b_heldout_families,
-               inputs=("harness_heldout_families.csv",),
-               title=HELDOUT_TITLE,
 ))
 
 
@@ -1230,8 +1094,21 @@ REGISTRY.append(
 
 ALLOCATION_FRONTIER_TITLE = "Aurora: balance distortion vs allocation budget"
 def _b_allocation_frontier(roots, outdir):
+    """Aurora's frontier, with the over-funded anticontrol suppressed FOR LEGIBILITY.
+
+    Keeps the two guided curves and the random / probe / heuristic controls. The
+    over-funded arm is the one series that is not read off this figure -- it is a paired
+    ratio, not a point on a budget curve, and figA24 is the Aurora anticontrol figure that
+    reports all three of its pairs (both W8A8 rows and the W4W8 row) quantitatively. So no
+    result leaves the thesis. Suppression is presentational: no row leaves
+    harness_results.csv, and the legend entry goes with the markers.
+
+    figA28 is the Stormer twin and must KEEP its over-funded arm -- see the note on
+    _b_allocation_frontier_stormer_balance_arm."""
     r = roots["aurora"]
-    data = fc.prepare_allocation_frontier(r.rpath("harness_results.csv"), axis="balance")
+    data = fc.prepare_allocation_frontier(r.rpath("harness_results.csv"), axis="balance",
+                                          cost_table=r.path("cost_tables.pt"),
+                                          show_rmseup=False)
     # lower left: the default upper-right box grew by two control entries and started
     # covering the random draws at x ~ 0.5.
     return fc.draw_allocation_frontier(data, outdir, "figA20_allocation_frontier.png",
@@ -1244,6 +1121,31 @@ REGISTRY.append(
                build=_b_allocation_frontier,
                inputs=("harness_results.csv",),
                title=ALLOCATION_FRONTIER_TITLE,
+))
+
+
+RMSE_AXIS_TITLE = "Aurora: RMSE distortion vs allocation budget"
+def _b_rmse_axis(roots, outdir):
+    r = roots["aurora"]
+    data = fc.prepare_axis_pair_frontier(
+        r.rpath("harness_results.csv"), axes=("standard", "balance_rescored"),
+        cost_table=r.path("cost_tables.pt"),
+        extra_axes_csv=r.rpath("harness_axis_standard.csv"),
+        show_rmseup=False,          # matches figA20; the arm is read off figA24
+        panel_titles={
+            "standard": "W8A8 family  --  RMSE axis",
+            "balance_rescored": "W8A8 family  --  balance axis (same SVR basis)"})
+    data["supxlabel"] = ("allocation cost  (share of quantisable Linear FLOPs left "
+                         "unquantised;  0 = all W8A8,  1 = none quantised)")
+    return fc.draw_allocation_frontier(data, outdir, "figA20b_rmse_axis.png",
+                                       RMSE_AXIS_TITLE, legend_loc="lower left")
+
+
+REGISTRY.append(
+    FigureSpec(id="rmse_axis", number=20, suffix="b", section="appendix", model="aurora",
+               build=_b_rmse_axis,
+               inputs=("harness_results.csv", "harness_axis_standard.csv"),
+               title=RMSE_AXIS_TITLE,
 ))
 
 
@@ -1341,7 +1243,8 @@ ALLOCATION_FRONTIER_STORMER_TITLE = "Stormer: balance distortion vs allocation b
 def _b_allocation_frontier_stormer(roots, outdir):
     """Stormer's FLOP-share / weight-byte allocation frontier, from harness_results.csv."""
     r = roots["stormer"]
-    data = fc.prepare_allocation_frontier(r.rpath("harness_results.csv"), axis="balance")
+    data = fc.prepare_allocation_frontier(r.rpath("harness_results.csv"), axis="balance",
+                                          cost_table=r.path("cost_tables.pt"))
     return fc.draw_allocation_frontier(data, outdir,
                                        "figA28_allocation_frontier_stormer.png",
                                        ALLOCATION_FRONTIER_STORMER_TITLE,
@@ -1359,9 +1262,16 @@ REGISTRY.append(
 ALLOCATION_FRONTIER_STORMER_BAL_TITLE = (
     "Stormer: balance distortion vs allocation cost (balance arm)")
 def _b_allocation_frontier_stormer_balance_arm(roots, outdir):
+    """The balance-arm frontier, with the over-funded anticontrol suppressed FOR LEGIBILITY.
+
+    figA28 is the as-run twin and keeps the over-funded arm, which matters because figA24 is
+    Aurora-only -- figA28 is the sole figure drawing Stormer's `rmseup_*` bracket. Do not
+    propagate `show_rmseup=False` to it, or that control leaves the thesis entirely."""
     r = roots["stormer"]
     data = fc.prepare_allocation_frontier(r.rpath("harness_results.csv"), axis="balance",
-                                          exclude=("W8A8_span2",))
+                                          exclude=("W8A8_span2",),
+                                          cost_table=r.path("cost_tables.pt"),
+                                          show_rmseup=False)
     return fc.draw_allocation_frontier(data, outdir,
                                        "figA28b_allocation_frontier_stormer_balance_arm.png",
                                        ALLOCATION_FRONTIER_STORMER_BAL_TITLE,
@@ -1426,59 +1336,6 @@ def _b_additivity_by_axis(roots, outdir):
         return None
     fc.write_additivity_csv(pooled + per_scheme,
                             os.path.join(outdir, "additivity_by_axis.csv"))
-
-    cal = {(c["model"], c["bucket"]): c for c in fc.additivity_calibration(per_scheme)}
-    contrasts = fc.additivity_bucket_contrast(per_scheme)
-
-    bits = []
-    for model in models:
-        parts = []
-        for bucket in ("balance", "conservation", "RMSE"):
-            c = cal.get((model, bucket))
-            if c:
-                parts.append(f"{bucket} {c['median_abs_log10']:.3f} (n={c['n']})")
-        if parts:
-            bits.append(f"{model} calibration error, median |log10 ratio|: "
-                        + "; ".join(parts) + ".")
-    for c in contrasts:
-        bits.append(
-            "{m}: {a} minus {b} = {d:+.3f} log units, paired across {n} schemes.".format(
-                m=c["model"], a=c["bucket_a"], b=c["bucket_b"],
-                d=c["median_diff"], n=c["n_schemes"]))
-    bits.append(
-        "WEIGHTING, AND ITS LIMIT. Each family votes once (median across its labels), not "
-        "each metric row: Aurora's 11 balance rows come from only 4 families, six of them "
-        "one wind_balance diagnostic pair at three levels whose ratios are near copies, and "
-        "counting them separately both outvotes the other families and halves every CI. But "
-        "the same rule OVER-collapses RMSE, whose 6 rows are 6 genuinely distinct variables "
-        "(Z500, T850, Q700, U500, MSLP, T2M) reduced to a single vote because they share one "
-        "family. RMSE's true calibration error therefore lies between the two weightings "
-        "-- 0.125 raw-row against 0.206 family-first on Aurora -- and the balance-versus-RMSE "
-        "gap should be read as bounded, not as a point estimate. What is robust to the "
-        "choice is that BALANCE is the most additive axis on both models; the "
-        "conservation-versus-RMSE ordering is NOT, and reverses between weightings on "
-        "Stormer.")
-    bits.append(
-        "WHAT THE SPREAD MARKS ARE, AND WHY MOST ARE NOT BOXES. Each cell shows the sample "
-        "of per-(scheme, family) additivity ratios behind its estimate; the thick tick is "
-        "the median. A cell with at least {k} values is drawn as a box (IQR) with 1.5-IQR "
-        "whiskers; every smaller cell is drawn as the RAW POINTS instead. That is not a "
-        "stylistic choice -- only ONE of the six pooled cells (Aurora balance, n=14) reaches "
-        "the threshold; the others hold 9, 7, 4, 4 and 3 values. Quartiles computed from "
-        "four numbers render exactly as authoritative as quartiles from forty, so drawing "
-        "them as boxes would manufacture precision this design does not have. The honest "
-        "summary of this figure is that the additivity sample is too small for boxplots, "
-        "and the points say so on the page. Note also that the spread is ACROSS FAMILIES "
-        "AND SCHEMES, not uncertainty on the median: a wide cell means the families "
-        "disagree about how additive the axis is, which is a different claim from an "
-        "imprecise estimate.".format(k=fc.BOX_MIN_N))
-    bits.append(
-        "Bold rows pool every scheme's RAW ratios; faint rows are the individual schemes and "
-        "are context, not independent estimates. Conservation contributes 3 metric rows per "
-        "scheme against balance's 11, which is why the pooled row is the one to read. "
-        "Paired contrasts carry a bootstrap CI and NO p-value: at 4 schemes a signed-rank "
-        "test is not powered to reject, and this is descriptive rather than a declared "
-        "family.")
 
     ordered, faint = [], set()
     for model in models:

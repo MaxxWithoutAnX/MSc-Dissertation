@@ -1,3 +1,5 @@
+""" Aurora W8 forward run
+"""
 print('hi', flush=True)
 from aurora import AuroraPretrained, Batch, Metadata, rollout
 import torch

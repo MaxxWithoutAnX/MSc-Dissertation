@@ -1,3 +1,5 @@
+""" Stormer W8A8 SQ ablation anaysis (one group quantised per ablation)
+"""
 print('hi', flush=True)
 import gc
 import os
@@ -107,7 +109,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f'device: {device}', flush=True)
 
 # Normalisation transforms (needed by fresh_model, so built before it)
-root_dir = '/vol/bitbucket/mes25/wb2_h5df'
+root_dir = os.environ.get("STORMER_H5_ROOT", '/vol/bitbucket/mes25/wb2_h5df')
+split = os.environ.get("STORMER_SPLIT", "era5_2020")
 norm_dir = '/vol/bitbucket/mes25/stormer/normalization_constants'
 normalize_mean = dict(np.load(os.path.join(norm_dir, "normalize_mean.npz")))
 normalize_mean = np.concatenate([normalize_mean[v] for v in variables], axis=0)
@@ -172,7 +175,7 @@ RECIPE = (f'/vol/bitbucket/mes25/stormer_pipeline/'
           f'smoothquant_recipe_sampled_{YEAR}_{PER_MONTH}pm_a{ALPHA}_i{CALIB_INITS}.pt')
 
 dataset = ERA5MultiLeadtimeDataset(
-    root_dir=os.path.join(root_dir, "test"),
+    root_dir=os.path.join(root_dir, split),
     variables=variables,
     transform=inp_transform,
     list_lead_times=[24, 72, 120, 168],  # 1, 3, 5, 7 days

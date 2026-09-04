@@ -1,3 +1,5 @@
+""" Summarises per layer activation statistics during a rollout
+"""
 import os, datetime
 import torch
 import numpy as np

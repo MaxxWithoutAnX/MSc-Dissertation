@@ -1,3 +1,5 @@
+""" used to plot graphs for the initial fully quantised runs. Individual graphs and statistics to understand quantisation damage.
+"""
 import sys
 
 import matplotlib.pyplot as plt
@@ -272,22 +274,6 @@ def plot_profile(ax, group, name_fmt, items, yvals, xlabel):
     ax.set_ylabel("Pressure / hPa")
     ax.grid(True, alpha=0.3)
 
-
-# --- Divergence / vorticity ----------------------------------------------------------
-dv_levels = run.levels("div_vort")
-fig, axes = plt.subplots(1, 3, figsize=(15, 7), sharey=True)
-for ax, (metric, xlabel) in zip(axes, [("ratio", "|div| / |vort|"),
-                                       ("div", "|divergence| / s$^{-1}$"),
-                                       ("vort", "|vorticity| / s$^{-1}$")]):
-    plot_profile(ax, "div_vort", f"divvort_{metric}_pred_{{item}}_{{lt}}", dv_levels,
-                 dv_levels, xlabel)
-axes[0].set_title("Ratio |div|/|vort|")
-axes[1].set_title("Divergence")
-axes[2].set_title("Vorticity")
-axes[0].legend(fontsize=8)
-fig.suptitle("Divergence / vorticity (extra-tropics, |lat| >= 20°)")
-fig.tight_layout()
-save_fig(fig, out_dir, "div_vort_profile.png")
 
 # --- Hypsometric residual -------------------------------------------------------------
 pairs = run.hyps_pairs()

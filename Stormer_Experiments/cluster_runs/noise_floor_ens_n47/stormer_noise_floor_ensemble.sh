@@ -20,7 +20,7 @@ export MPLBACKEND=Agg
 export PYTHONUNBUFFERED=1               # SLURM logs are block-buffered otherwise
 export PHYSQ_CORE=/vol/bitbucket/mes25/physq_core
 
-export NF_SPLIT=test_2021               # the harness scoring year (floor must match its inits)
+export NF_SPLIT=era5_2021               # the harness scoring year (floor must match its inits)
 export NF_N_INITS=47                    # == run_stormer_precision_harness_n47.sh
 export NF_LEADS=24,72,120,168           # == the harness's leads
 export NF_EPS=1e-6                      # fp32 round-off scale
@@ -42,7 +42,7 @@ for SEED in $(seq 0 $((MEMBERS - 1))); do
     echo
     echo ">>> seed $SEED  ($(date))  elapsed $(($(date +%s) - START))s"
     export SLURM_ARRAY_TASK_ID=$SEED       # the .py reads the seed from here
-    if time python noise_floor_ens_n47emble.py; then
+    if time python stormer_noise_floor_ensemble.py; then
         echo ">>> seed $SEED: OK"
     else
         echo ">>> seed $SEED: FAILED (continuing with the remaining members)"
