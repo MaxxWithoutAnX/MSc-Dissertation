@@ -11,7 +11,10 @@ class NoiseFloor:
         """
         Numerical noise floor class.
         Args:
-            detailed [dict | None]: {floor_type: {"per_family": {family: {lead: value}}}} or None
+            detailed [dict | None]: {floor_type: {"per_family": {family: {lead: value}},
+                                     "per_metric": {metric label: {lead: value}},
+                                     "n_members": int, "quantile": float}} or None.
+                                     Values are in each metric's own units. sigma_for reads per_metric.
         """
         self._detailed = detailed
         self.is_null = detailed is None
@@ -19,7 +22,7 @@ class NoiseFloor:
     @classmethod
     def null(cls):
         """ Null floor. Used when using a noise floor would be circular (ie building ensemble floor) and when 
-            no noise floor exists code still runs.
+            no noise floor exists, code can still run.
         """
         return cls(None)
 
@@ -30,13 +33,12 @@ class NoiseFloor:
         return cls(torch.load(path, map_location="cpu", weights_only=False))
 
     def sigma_for(self, spec, lead):
-        """Conservative (max over floor types) per-metric run-to-run floor. 0.0 when
-        that metric has no measured floor, so it is never gated.
+        """per-metric run-to-run floor. 0.0 when that metric has no measured floor, so it is never gated.
         Args:
             spec [MetricSpec]: Metric to look up.
             lead [int] : A single lead time in hours. Should have a value 24, 72, 120, or 168 to match the rest of the code
         Returns:
-            float : Largest magnitude in SVR of that metric at that lead time in the ensemble
+            float : run to run floor in that metric's own units.
         """
         if self._detailed is None:
             return 0.0
