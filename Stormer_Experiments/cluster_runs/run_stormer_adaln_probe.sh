@@ -1,4 +1,13 @@
 #!/bin/bash
+#SBATCH --job-name=stormer-adaln-probe
+#SBATCH --partition=a40
+#SBATCH --gres=gpu:1
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=32G
+#SBATCH --time=02:00:00
+#SBATCH --output=/vol/bitbucket/mes25/stormer_pipeline/logs/%x-%j.out
+#SBATCH --mail-type=END,FAIL
+#SBATCH --mail-user=mes25@ic.ac.uk
 
 START=$(date +%s)
 echo "=== START: $(date) ==="

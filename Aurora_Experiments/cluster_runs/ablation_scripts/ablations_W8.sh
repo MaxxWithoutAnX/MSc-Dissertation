@@ -1,4 +1,13 @@
 #!/bin/bash
+#SBATCH --job-name=aurora-ablations-W8
+#SBATCH --partition=a40
+#SBATCH --gres=gpu:1
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=24G
+#SBATCH --time=10:00:00
+#SBATCH --output=/vol/bitbucket/mes25/aurora_pipeline/logs/%x-%j.out
+#SBATCH --mail-type=END,FAIL
+#SBATCH --mail-user=mes25@ic.ac.uk
 
 # --- Time tracking ---
 START=$(date +%s)

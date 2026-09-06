@@ -1,4 +1,4 @@
-""" Rollout of full precision Stormer
+""" Rollout of full precision Stormer. Was used locally for testing with patch=4 so no .sh exists.
 """
 print('hi', flush=True)
 import os

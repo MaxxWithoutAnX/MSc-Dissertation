@@ -1,4 +1,12 @@
 #!/bin/bash
+#SBATCH --job-name=stormer-ablations-w4
+#SBATCH --partition=a30
+#SBATCH --gres=gpu:1
+#SBATCH --cpus-per-task=4
+#SBATCH --time=24:00:00
+#SBATCH --output=/vol/bitbucket/mes25/stormer_pipeline/logs/%x-%j.out
+#SBATCH --mail-type=END,FAIL
+#SBATCH --mail-user=mes25@ic.ac.uk
 
 # --- Time tracking ---
 START=$(date +%s)
