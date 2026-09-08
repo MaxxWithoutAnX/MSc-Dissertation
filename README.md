@@ -223,4 +223,4 @@ Generative AI was used to help debug scripts, create graphs, and for assisting i
 
 ## Citation and acknowledgements
 
-This work evaluates two published models and does not modify either. Aurora is used through the microsoft-aurora package at version 1.8.0 with the aurora-0.25-pretrained checkpoint. Stormer is used from https://github.com/tung-nd/stormer at commit 58dfee5 with the 1.40625 degree patch-size-2 checkpoint. Cluster compute was provided by the Department of Computing at Imperial College London.
+This work evaluates two published models, Aurora and Stormer, using their published checkpoints. No weights were retrained or fine-tuned. Aurora is used through the microsoft-aurora package at version 1.8.0 with the aurora-0.25-pretrained checkpoint. Stormer is used from https://github.com/tung-nd/stormer at commit 58dfee5 with the 1.40625 degree patch-size-2 checkpoint. Cluster compute was provided by the Department of Computing at Imperial College London.
